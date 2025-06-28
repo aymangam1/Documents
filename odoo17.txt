@@ -1,0 +1,2938 @@
+http://localhost:8016/web/database/selector
+_________________________________________________________________________________________________
+kill -9 $(ps -A | grep python | awk '{print $1}')
+_________________________________________________________________________________________________
+1- odoo.conf
+[options]
+addons_path = /home/ayman/odoo/odoo/addons,
+              /home/ayman/odoo/odoo/odoo/addons,
+              /home/ayman/odoo/odoo/odoo/custom_addons
+db_user = ayman
+db_password = 0
+log_level = error
+xmlrpc_port = 8017
+_________________________________________________________________________________________________
+2- custom_addons
+./odoo-bin scaffold app_one /home/ayman/odoo/odoo/odoo/custom_addons 
+_________________________________________________________________________________________________
+ ./odoo-bin --addons-path=".../addons,.../custom_addons" -d ayman -u app_one --dev xml
+ ./odoo-bin shell -d ayman
+ env['ir.module.module'].search([('name', '=', 'app_one')]).button_immediate_uninstall()
+
+_________________________________________________________________________________________________
+3- __init__.py
+# -*- coding: utf-8 -*-
+from . import controllers
+from . import models
+_________________________________________________________________________________________________
+4- __manifest__.py
+# -*- coding: utf-8 -*-
+{
+    'name': "App one",
+    'license': 'LGPL-3',
+    'application': True,
+    'installable': True,
+    'auto_install': False,
+    'sequence':1,
+    'summary': "Short (1 phrase/line) summary of the module's purpose",
+    'author': "Ayman Gamal",
+    'category': 'Uncategorized',	or	#'category': 'Hidden',
+    'version': '17.0.0.1.0',
+    'depends': ['base', 'pos_sale', 'mail', 'sale_management', 'account'],
+    'images': ['static/description/banner.jpg'],
+    # always loaded
+    'data': [
+        'security/ir.model.access.csv',
+        'data/sequence.xml',
+        'views/views.xml',
+        'views/templates.xml',
+        'views/base_menu.xml',
+        'views/property_views.xml',
+        'views/owner_views.xml',
+        'views/tag_views.xml',
+        'views/sale_order_views.xml',
+    ],
+    'assets': {
+        'web.assets_backend': ['app_one/static/src/css/property.css'],
+        'point_of_sale.assets': [
+            'pos_customer_search/static/src/css/partner_search_bar.css',
+            'pos_customer_search/static/src/js/custo_partne_button1.js',
+            'pos_customer_search/static/src/xml/custo_partne_button_view1.xml',
+        ],
+    },
+    # only loaded in demonstration mode
+    'demo': [
+        'demo/demo.xml',
+    ],
+}
+_________________________________________________________________________________________________
+5- Three Types of Models.
+
+from odoo import models
+class ModelA(models.Model):
+    _name = 'model.a'
+    
+from odoo import models
+class ModelB(models.TransientModel):
+    _name = 'model.b'
+    
+from odoo import models
+class ModelC(models.AbstractModel):
+    _name = 'model.c'
+
+id                 |#show fields, table by terminal
+create_uid         | 
+create_date        |psql -d test #test=database_name
+write_uid          |\d model.a; #model.a=table_name
+write_date         |
+name      	   |
+_________________________________________________________________________________________________
+6- Automatic Fields in Odoo.​
+
+from odoo import models
+class ModelD(models.Model):
+    _name = 'model.d'
+    _description = "Model D"
+    _log_access = False
+
+    
+id                 |#show fields, table by terminal
+name        	   | 
+description        |psql -d test #test=database_name|
+         	   |\d model.d; #model.d=table_name|
+_________________________________________________________________________________________________
+7- Basic Fields in Odoo.​
+https://www.odoo.com/documentation/17.0/applications/studio/fields.html
+Char, Text, Date, Float, Integer, Boolean, Selection
+
+>>> property.py <<<
+
+from odoo import models, fields, api
+
+class Property(models.Model):
+    _name = 'property'
+    _description = 'Property'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'patient_id'		#اسم الفيلد
+    _order = 'sequence,id'	# drag and drop  
+    _rec_names_search = ['reference', 'patient_id']	#البحث عن الاسم بقيم الفيلدات فى الفيلدات المرتبطه 
+    
+    name = fields.Char(required=1, default='New', size=10, copy=Falsef)
+    sequence = fields.Integer(default=10)	# drag and drop 
+    description = fields.Text()
+    postcode = fields.Char(required=1)		#<field name="postcode" required="1"/> 
+    date_availability = fields.Date()
+    expected_Price = fields.Float(digits=(0, 2))
+    selling_Price = fields.Float()
+    diff = fields.Float()
+    bedrooms = fields.Integer()
+    living_area = fields.Integer()
+    facades = fields.Integer()
+    garage = fields.Boolean()
+    garden = fields.Boolean()
+    garden_area = fields.Integer()
+    garden_orientation = fields.Selection([
+        ('north', 'North'),
+        ('south', 'South'),
+        ('east', 'East'),
+        ('west', 'West'),
+    ], default='north')
+    patient_id = fields.Many2one('hospital.patient', copy=False, ondelete='restrict') #"restrict"يمنع المسح,"cascade"يمسح معه,"set null" قيمه فارغه
+    
+    def _compute_display_name(self):		#لتعديل الاسم الظاهر فى الفيلدات المرتبطه
+        for rec in self:
+            rec.display_name = f"[{rec.reference}] {rec.patient_id.name}"
+            
+>>> __init__.py <<<
+from . import property
+________________________________________________________________________________________________
+8- Tree View in Odoo.​
+>>> __manifest__.py <<<
+'data': ['views/base_menu.xml',],
+>>> base_menu.xml <<<		_________________menuitem___________________
+<odoo>
+
+        <menuitem				#المستوى الاول
+                id="real_estate_root_menu"
+                name="Real Estate"
+                sequence="1"   #للترتيب فى  القائمه
+                web_icon="todo_management,static/description/icon.png"	#لاضافه لوجو صورة
+        />
+
+        <menuitem				#المستوى الثانى
+                id="properties_menu"
+                name="Properties"
+                parent="real_estate_root_menu"/>
+
+</odoo>
+
+>>> __manifest__.py <<<
+'data': [
+        'views/base_menu.xml',
+        'views/property_views.xml', #فى ترتيب الداتاactionلازم تيجى بعد الـactionاللى فيها الـmenuitemالـ
+    ],
+>>> property_views.xml <<<
+
+        <record model="ir.actions.act_window" id="propetry_action"><!--الريكورد ضرورى لتنفيذ الاكشن-->
+            <field name="name">Propetry</field>
+            <field name="res_model">property</field>    <!--اسم الموديل اللى فى البايثون فايل-->
+            <field name="view_mode">tree,form,kanban</field>
+            <field name="view_ids" eval="[Command.clear(),
+                          (0,0,{'view_mode':'tree', 'view_id': ref('property_tree_view')}),
+                          (0,0,{'view_mode':'form', 'view_id': ref('property_form_view')})]"/>
+  <!--فى حاله وجود اكثر من tree لنفس الموديول بصلاحيات مختلفه نستخدم view_ids-->
+  	    <field name="search_view_id" ref="hospital_patient_view_search"/>
+  	    <field name="context">{'search_default_male': 1}</field>	<!-- filterيمكننا استخدام اى -->
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create a new patient
+                </p>
+            </field>
+        </record>
+        <menuitem				#المستوى الثالث
+                id="properties_menu_item"
+                name="Properties"
+                parent="properties_menu"
+                action="propetry_action"
+	/>
+<!-- -c odoo.conf -u om_hospital --dev xml بدون عمل ريستارت للسيرفرviewتحديث الـ -->
+>>> property_views.xml <<<   _________________Tree___________________
+
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="property_tree_view">
+            <field name="name">property tree</field>
+            <field name="model">property</field>	#اسم الموديل اللى فى البايثون فايل
+            <field name="priority">20</field>
+            <field name="arch" type="xml">
+                <tree class="header_custom" multi_edit="1" create="1" edit="1" delete="1" editable="bottom" string="x"
+                decoration-danger="(is_finished)" decoration-success="(is_progress)>	 <!-- editable="bottom" بسtreeلو -->
+        	    <field name="is_finished" invisible="1" optional="hide"/>
+          	    <field name="is_progress" invisible="1" optional="hide"/>
+                    <field name="name"/> 
+                    <field name="sequence" widget='handle'/>	<!-- drag and drop  -->
+                    <field name="coordinates" widget="text" style="max-height:3em; overflow:hidden; text-overflow:ellipsis;"/> <!-- لتقليل عدد الحروف المعروضه -->
+                    <field name="postcode"/>
+                    <field name="owner_id"/>
+                    <field name="date_availability"/>
+                    <field name="selling_Price"/>
+                    <field name="garden"/>
+                    <field name="facades"/>
+                    <field name="state" optional="show"/>
+                    <field name="garden_area" ptional="hide"/>
+                    <field name="bedrooms" optional="1"/>
+                    <field name="garage" optional="1"/>
+                </tree>
+            </field>
+        </record>
+   <data>
+<odoo>
+
+>>> __manifest__.py <<<
+'data': [
+        'security/ir.model.access.csv',
+        'views/base_menu.xml',
+        'views/property_views.xml',
+    ],
+
+>>> ir.model.access.csv <<<		#لتعريف الـ view لاظهر الـ menuitem
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_property,property,model_property,base.group_user,1,1,1,1
+________________________________________________________________________________________________
+9- Form View in Odoo.​	
+>>> property_views.xml <<<   _________________Form___________________
+
+	<record model="ir.ui.view" id="property_form_view">
+            <field name="name">property form</field>
+            <field name="model">property</field>	#اسم الموديل اللى فى البايثون فايل
+            <field name="arch" type="xml">
+                <form create="1" edit="1" delete="1">	#صلاحيات اليوزر
+                    <sheet>
+                        <header>
+                        </header>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1>
+                                <field name="name" placeholder="( اسم كلية - اسم مدرسة )" help="Home Menu Background Image"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group string="General Info.">
+                                <field name="date_availability" required="1"/>
+                                <field name="postcode"/>
+                            </group>
+                            <group string="additional Info.">
+                                <field name="owner_id" invisible="state != 'draft'" required="state != 'draft'"/>
+                            </group>
+                            <group>
+                                <field name="description" required="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+________________________________________________________________________________________________
+10- Search View in Odoo.	_________________Search___________________
+
+	<record model="ir.ui.view" id="property_search_view">
+            <field name="name">property search</field>
+            <field name="model">property</field>	#اسم الموديل اللى فى البايثون فايل
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>		#____بحث_____
+                    <field name="postcode"/>
+                			#____فلتر ___
+                    <filter name="is_garden" string="With Garden" domain="[('garden', '=', True)]"/>
+                    <filter name="is_not_garden" string="Without Garden" domain="[('garden', '!=', True)]"/>
+                    <filter name="is_new" string="New" domain="[('state', '=', 'new')]"/>
+					#____جروب فلتر ___
+                    <filter name="group_garden" string="Garden" context="{'group_by': 'garden'}"/>				#context اسم الـ field
+                    <group expand="1" string="Group By">
+                        <filter string="Gander" name="group_by_gander" domain="[]" context="{'group_by':'gander'}"/>
+                    </group>
+                    <separator/>	<!-- لعمل فاصل لجعل البحث او بدل و -->
+                    <field name="name" filter_domain="['|', ('name','ilike',self), ('assign_to','ilike',self)]" string="Task Name + Assign"/>	#لاضافه اكثر من فلتر هاااااااام
+                    <field name="name"/> 
+                    <field name="assign_to"/>
+                    
+                    <searchpanel>	<!-- searchpanel -->
+                        <field name="gander" string="Gander" enable_counters="1"/>
+                    </searchpanel>
+                </search>
+            </field>
+        </record>
+        ________________________________________________________________________________________________
+11- Validation Levels and Methods      #خطاء / فريد 
+>>> property.py <<<
+
+from odoo.exceptions import ValidationError
+
+    @api.constrains('bedrooms')
+    def _check_bedrooms_greater_zero(self):
+        for rec in self:
+            if rec.bedrooms == 0:
+                raise ValidationError('Please add valid number of bedrooms!')
+
+    _sql_constraints = [
+        ('unique_name', 'unique("name")', 'This name is exist!')
+    ]
+
+________________________________________________________________________________________________
+Required Readonly Invisible Attributes In Odoo 
+تاريخ اليوم اخفاء و اظهار فيلدات بشرط  
+    is_minor = fields.Boolean()
+    guardian = fields.Char()
+
+    @api.onchange('date_of_birth')
+    def check_is_minor(self):
+        today = fields.Datetime.today()
+        for rec in self:
+            if rec.date_of_birth:
+                age = relativedelta(today, rec.date_of_birth).years
+                age1 = today.year - rec.date_of_birth.year
+                print(f"Age: {age} years")
+                print(f"Age1: {age1} years")
+                if age < 16:
+                    rec.is_minor = True
+
+				<field name="is_minor" invisible="1"/>
+                                <field name="guardian" invisible="not is_minor" required="is_minor"/>
+                                                        invisible="ttype not in ['char', 'text', 'html']"
+                                                        readonly="ttype not in ['char', 'text', 'html']"/>
+                                                        invisible="ttype not in ['many2one', 'one2many', 'many2many']"
+                                                        required="ttype in ['many2one', 'one2many', 'many2many']"/>
+                                                        invisible="ttype != 'many2one'"
+                                                        required="ttype == 'one2many'"/>
+                                                        invisible="ttype != 'many2many' or state != 'manual'"                                          
+________________________________________________________________________________________________
+12- Exploring CRUD Methods:​1. Create Method.
+>>> property.py <<<
+
+    @api.model_create_multi
+    def create(self, vals):
+        res = super(Property, self).create(vals)
+        # res = super().create(self, vals)
+        print('inside create method')
+        return res
+
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None, access_rights_uid=None):
+        res = super(Property, self)._search(domain, offset=0, limit=None, order=None, access_rights_uid=None)
+        print('inside search method(read)')
+        return res
+
+    # with out @api
+    def write(self, vals):
+        res = super(Property, self).write(vals)
+        print('inside write method(update)')
+        return res
+
+    # with out @api
+    def unlink(self):
+        res = super(Property, self).unlink()
+        print('inside unlink method(delete)')
+        return res
+        
+    def unlink(self):
+        for rec in self:
+            domain = [('patient_id', '=', rec.id)]
+            appointment = rec.env['hospital.appointment'].search(domain)
+            if appointment:
+                raise ValidationError(_('You cannot delete the patient now. '
+                                        '\nAppointment existing for this patient: %s'%rec.name)) #"test %s"%varibal
+        return super().unlink()
+        
+or 
+    @api.ondelete(at_uninstall=False)		#@api.ondelete
+    def _check_patient_appointments(self):
+        for rec in self:
+            domain = [('patient_id', '=', rec.id)]
+            appointment = rec.env['hospital.appointment'].search(domain)
+            if appointment:
+                raise ValidationError('You cannot delete the patient now. '
+                                        '\nAppointment existing for this patient')
+-------------
+payable_lines.with_context(dynamic_unlink=True).unlink()
+#to delete by force لمسح فيلد بالقوة
+________________________________________________________________________________________________
+13- Relational Fields in Odoo.
+
+>>> __init__.py <<<
+from . import owner
+
+>>> owner.py <<
+from odoo import models, fields
+
+class Owner(models.Model):
+    _name = 'owner'
+
+    name = fields.Char(required=1, default='Owner', size=10)
+    phone = fields.Char()
+    address = fields.Char()
+    				________________One2many________________
+    property_ids = fields.One2many('property', 'owner_id')   #property=اسم الموديل /owner_id=Many2one
+
+>>> __manifest__.py <<<
+'data': [
+
+        'views/owner_views.xml',		#dataنضيف مسار الملف ل
+],
+
+>>> base_menu.xml <<<
+        <menuitem				#المستوى الثانى
+                id="configration_menu"
+                name="Configration"
+                parent="real_estate_root_menu"/>
+
+>>> owner_views.xml <<<
+			<group>
+                            <field name="property_ids" widget="many2many_tags"/>	#One2many
+                        </group>
+
+                <record model="ir.actions.act_window" id="owner_action">
+                    <field name="name">Owner</field>
+                    <field name="res_model">owner</field>
+                    <field name="view_mode">tree,form</field>
+                </record>
+
+                <menuitem		      #المستوى الثالث
+                        id="owners_menu_item"
+                        name="Owners"
+                        parent="configration_menu"
+                        action="owner_action"/>
+                        
+>>> ir.model.access.csv <<<
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_owner,owner,model_owner,base.group_user,1,1,1,1
+
+    				________________Many2one_______________
+>>> property.py <<<
+owner_id = fields.Many2one('owner')
+
+>>> property_views.xml <<<
+<field name="owner_adderss"/> 
+    				________________Many2many_______________
+    tag_ids = fields.Many2many('patient.tag', 'patient_tag_rel',
+                               'patient_id', "tag_id", 'Tags') #اسم الموديول,الجدول زى ما احب,العمود1,العمود2,الاسم
+    product_ids = fields.Many2many(comodel_name='product.product')	#نختصرها فى اسم المديول
+    
+>>> __manifest__.py <<<
+'depends': ['product'],
+
+.py>>>
+class PatientTag(models.Model):
+    _name = 'patient.tag'
+    _description = 'Patient Tag'
+    _order = 'sequence,id'	# drag and drop  
+
+    name = fields.Char(string='Name', required=1)
+    sequence = fields.Integer(default=10)
+    
+.xml>>>
+        <record id="patient_tag_view_tree" model="ir.ui.view">
+            <field name="name">patient_tag_tree</field>
+            <field name="model">patient.tag</field>
+            <field name="arch" type="xml">
+                <tree string="Patient Tag" editable="bottom">
+                    <field name="sequence" widget='handle'/>	<!-- drag and drop  -->
+                    <field name="name"/>
+                </tree>
+            </field>
+        </record>
+________________________________________________________________________________________________
+14- Add Icon to Your App.		#اضافه صورة/logo/icon
+.../custom_addons/app_one/static/description/icon.png
+
+>>> base_menu.xml <<<
+
+        <menuitem
+                id="real_estate_root_menu"
+                name="Real Estate"
+                web_icon="app_one,static/description/icon.png"		#لاظهار الصورة icon.png
+        />
+________________________________________________________________________________________________
+15- Add Workflow/States to Your Model. ​
+
+>>> property.py <<<
+
+    state = fields.Selection([
+        ('draft', 'Draft'),
+        ('pending', 'Pending'),
+        ('sold', 'Sold'),
+    ], default='draft')
+
+>>> property_views.xml <<<
+
+<sheet>
+   <header>
+      <button name="action_draft" type="object" class="btn-primary" string="Set To Draft"
+                                    invisible="state == 'draft'"/>
+       <button name="action_pending" type="object" class="btn-secondary" string="Pending"
+                                    invisible="state != 'draft'"/>
+       <button name="action_sold" type="object" class="btn-success" string="Sold"
+                                    invisible="state != 'pending'"/>
+       <field name="state" widget="statusbar" options="{'clickable': 0}" statusbar_visible="draft,pending,sold"/>
+   </header>
+   
+   
+________________________________________________________________________________________________
+16- Action Buttons with Model Methods.
+>>> property.py <<<
+
+    state = fields.Selection([
+        ('draft', 'Draft'),
+        ('pending', 'Pending'),
+        ('sold', 'Sold'),
+    ], default='draft')
+
+    def action_draft(self):
+        for rec in self:
+            print("inside draft action")
+            rec.state = 'draft'
+
+    def action_pending(self):
+        for rec in self:
+            print("inside pending action")
+            rec.write({
+                'state': 'pending'
+            })
+
+    def action_sold(self):
+        for rec in self:
+            print("inside sold action")
+            rec.state = 'sold'
+            
+>>> property_views.xml <<<
+
+    <sheet>
+       <header>
+       					________________________________type="object"________________________________
+          <button name="action_draft" type="object" class="btn-primary" string="Set To Draft"
+                                    invisible="state == 'draft'"/>
+          <button name="action_pending" type="object" class="btn-secondary" string="Pending"
+                                    invisible="state != 'draft'"/>
+          <button name="action_sold" type="object" class="btn-success" string="Sold"
+                                    invisible="state != 'pending'"/>
+					________________________________type="action"________________________________
+<button name="action_draft" type="action" class="btn-primary" string="Set To Draft"
+        invisible="state == 'draft'" context="{'state': 'draft'}"/>
+        
+<button name="%(plan_wizard_action)d" string="Launch Plan" type="action" groups="hr.group_hr_user" invisible="not active"/>
+
+<record id="plan_wizard_action" model="ir.actions.act_window">
+    <field name="name">Launch Plan</field>
+    <field name="res_model">mail.activity.schedule</field>
+    <field name="view_mode">form</field>
+    <field name="context">{'plan_mode': True}</field>
+    <field name="target">new</field>
+</record>
+                                    
+				________________________________
+					    Buttons # لون الزرار /تنسيق الزرار Button color
+<button name="" string="" type="" class=""/>
+		Use Bootstrap’s custom button styles for actions in forms 
+https://getbootstrap.com/docs/4.0/components/buttons/
+<button class="btn-primary"/>  #Primary
+<button class="btn-secondary"/>  #Secondary
+<button class="btn-success"/>  #Success
+<button class="btn-danger"/>  #Danger
+<button class="btn-warning"/>  #Warning
+<button class="btn-info"/>  #Info
+<button class="btn-light"/>  #Light
+<button class="btn-dark"/>  #Dark
+                                
+________________________________________________________________________________________________
+17- Decorators, Onchange, Depends ​& Computed Fields. ​
+>>> property.py <<<
+				________________compute_______________
+				
+    diff = fields.Float(compute='_compute_diff', store=1, readonly=0)
+    
+        @api.depends('expected_Price', 'selling_Price')		#depends
+	def _compute_diff(self):
+	   for rec in self:
+	       rec.diff = rec.expected_Price - rec.selling_Price
+-------
+total_qty = fields.Float(compute='_compute_total_qty', store=True)
+
+    @api.depends('appointment_line_ids', 'appointment_line_ids.qty')
+    def _compute_total_qty(self):
+        for rec in self:
+            # total_qty = 0
+            # for line in rec.appointment_line_ids:
+            #     total_qty += line.qty
+            # rec.total_qty = total_qty
+            rec.total_qty = sum(rec.appointment_line_ids.mapped('qty'))	#مجموع المنتجات
+-------
+    last_price_unit = fields.Float('Last Price', readonly=True, store=True, compute="_compute_last_price_unit") #*****
+
+    @api.depends('product_id')
+    def _compute_last_price_unit(self):
+        purchase_ids = self.env['purchase.order'].search([('state', 'in', ('purchase', 'done')), ('order_line.product_id', 'in', self.product_id.ids)], order='id DESC', limit=1)
+        for line in purchase_ids.order_line:
+            if line.product_id == self.product_id:
+                self.last_price_unit = line.price_unit
+
+				________________related_______________
+				
+    owner_adderss = fields.Char(related='owner_id.address', readonly=0, store=1)
+
+    @api.onchange('expected_Price')		#onchange
+    def _onchange_expected_Price(self):
+        for rec in self:
+            if rec.expected_Price < 0:
+                return {
+                    'warning': {'title': 'warning', 'message': 'negative value.', 'type': 'notification'}
+                }
+________________________________________________________________________________________________
+18- Custom Styles:​ Editing Treeview Header.
+>>> property_views.xml <<<
+
+<tree class="header_custom">
+
+>>> property.css <<<  #.../custom_addons/app_one/static/src/css/property.css
+
+.header_custom table thead > tr > th {
+background-color: #7BD3EA !important;
+color: white !important;
+text-align: center !important;
+}
+
+.header_custom table thead > tr > th:nth-child(2) {
+width: 250px !important;
+}
+
+>>> __manifest__.py <<<
+
+    'assets': {
+        'web.assets_backend': ['app_one/static/src/css/property.css']
+    },
+________________________________________________________________________________________________
+19- Inheritance Techniques in Odoo.
+	     Inheritance
+   v--------------|--------------v		
+python		model		view
+		  |
+    traditional<-/ \-> delegation
+  	    |
+_inherit <-/ \-> _inherit
+		 _name
+		 
+>>> __manifest__.py <<<
+    'depends': ['base', 'sale_management', 'account'],
+    
+>>> sale_order.py <<<
+اسم الموديل بيكون موجود فوق فى الـURL مثال model=sale.order
+عند وضع المؤشر على الـ button تظهر قائمه من ضمنها الـ Method: action_confirm
+
+from odoo import models, fields
+
+class SaleOrder(models.Model):
+    _inherit = 'sale.order'
+
+    property_id = fields.Many2one('property')
+
+    def action_confirm(self):
+        res = super(SaleOrder, self).action_confirm()
+        print("inside action_confirm method")
+        return res
+        
+>>> __init__.py <<<
+from . import owner
+
+>>> sale_order_views.xml <<<
+<odoo>
+    <record model="ir.ui.view" id="view_order_form_inherit">
+        <field name="name">view order form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            #<field name="partner_id" position="after"> 	#طريقه1
+<!--                #after , before , inside , !replace-->
+                #<field name="property_id"/>
+            #</field>
+            <xpath expr="//field[@name='partner_id']"  position="after">	#طريقه2
+                <field name="property_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+
+>>> __manifest__.py <<<
+    'data': [
+        'views/sale_order_views.xml',
+    ],
+    
+>>> client.py <<<
+from odoo import models, fields
+class Client(models.Model):
+    _name = 'client'
+    _inherit = 'owner'
+________________________________________________________________________________________________
+20- Related Fields in Odoo.
+>>> property.py <<<
+    owner_adderss = fields.Char(related='owner_id.address', readonly=0, store=1)
+    owner_phone = fields.Char(related='owner_id.phone', readonly=0, store=1)
+>>> property_views.xml <<<
+                                <field name="owner_adderss"/>
+                                <field name="owner_phone"/>
+________________________________________________________________________________________________
+21- Chatter & Tracking Fields.
+>>> __manifest__.py <<<
+    'depends': ['base', 'mail'],
+
+>>> property.py <<<
+    _description = 'Property'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    
+    description = fields.Text(tracking=1)
+    date_availability = fields.Date(tracking=1)
+
+>>> property_views.xml <<<
+                    <div class="oe_chatter">
+                         <field name="message_follower_ids" groups="base.group_user" options="{'post_refresh': 'recipients'}"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>                                
+________________________________________________________________________________________________
+22- One2many Lines ​& Notebook and Pages Tabs.
+
+>>> property.py <<<
+    line_ids = fields.One2many('property.line', 'property_id')
+
+class Propertyline(models.Model):
+    _name = 'property.line'
+
+    property_id = fields.Many2one('property')
+    area = fields.Float()
+    description = fields.Char()
+    
+>>> ir.model.access.csv <<<  
+access_property_line,property_line,model_property_line,base.group_user,1,1,1,1
+
+>>> property_views.xml <<<
+                            <notebook>
+                                <page string="Bedrooms">
+                                    <field name="line_ids">
+                                        <tree editable="bottom">	<!-- editable="top" -->
+                                            <field name="description"/>
+                                            <field name="area"/>
+                                        </tree>
+                                    </field>
+                                </page>
+                            </notebook>   
+                            
+			<notebook>
+                            <page name="appointment_lines" string="lines">
+                                <field name="appointment_line_ids">
+                                    <tree>
+                                        <field name="product_id"/>
+                                        <field name="qty"/>
+                                    </tree>
+                                    <form>
+                                        <sheet>
+                                            <group>
+                                                <field name="product_id"/>
+                                                <field name="qty"/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet> 
+________________________________________________________________________________________________
+33- Reserved Field Names & Archiving/Unarchiving Technique.​
+>>> building.py <<<
+    _rec_name = 'code'
+    
+    active = fields.Boolean(default=1)
+    
+>>> building_view.xml <<<
+                    <field name="active" invisible="1"/>    		 #tree
+                </tree>
+                
+                            <field name="active" invisible="1"/>	#form
+                        </group>
+                    </sheet>
+                </form>
+    									#search
+                    <filter name="is_archive" string="Archive" domain="[('active', '=', 0)]"/>
+                </search>
+________________________________________________________________________________________________
+34- Server Actions in Odoo.
+>>> property.py <<<
+state = fields.Selection([
+        ('draft', 'Draft'),
+        ('pending', 'Pending'),
+        ('sold', 'Sold'),
+        ('closed', 'Closed'), 		#<<<
+    ], default='draft')
+    
+    def action_closed(self):
+        for rec in self:
+            rec.state = 'closed'
+            
+>>> property_views.xml <<<
+            <record model="ir.actions.server" id="property_closed_action_server">
+              <field name="name">Closed</field>		#الاسم اللى هيظهر 
+              <field name="model_id" ref="model_property"/>	#model_اسم الموديل(_name=)
+              <field name="binding_model_id" ref="model_property"/>	#عشان يظهر فى الاكشن الترس
+              <field name="state">code</field>	#codeمعناها كود بايثون
+              <field name="code">	#نكتب بداخلها الكود
+                  action = records.action_closed()	#الميثود اللى سبق كتابته
+              </field>
+            </record>
+________________________________________________________________________________________________
+35- Automated Actions (Cron Jobs) in Odoo.
+>>> property.py <<<
+    expected_selling_date = fields.Date(tracking=1)
+    is_late = fields.Boolean()
+    
+    def check_expected_selling_date(self):
+        property_ids = self.search([])	#propertyلتحديد جميع الـ
+        for rec in property_ids:
+            if rec.expected_selling_date and rec.expected_selling_date < fields.Date.today():
+                rec.is_late = True           
+            
+>>> property_views.xml <<<
+                <tree decoration-danger="(is_late)">	#لجعل اللون احمر
+                    <field name="is_late" invisible="1"/>	#اضافه الحقل وجعله غير مرئى خفى    
+            <tree decoration-danger="(is_finished)" decoration-success="(is_progress)">
+                <field name="is_finished" invisible="1" optional="hide"/>
+                <field name="is_progress" invisible="1" optional="hide"/>
+            
+            <record model="ir.cron" id="check_selling_date_corn">	#تستخدم ir.cron للتكرار
+              <field name="name">Property: Check selling date</field>	#الاسم الظاهر فى الاعدادات الـUI
+              <field name="model_id" ref="model_property"/>	#اسم الموديل
+              <field name="state">code</field>	#لكتابه كود بايثون
+              <field name="code">model.check_expected_selling_date()</field>	#model.اسم الميثود
+              <field name="interval_number">1</field>	#typeعدد المرات فى الـ
+              <field name="interval_type">days</field>	#المسافه بين المرات
+              <field name="numbercall">-1</field>	#المده (-1 تعنى دائم)
+              <field name="active">True</field>		#يعمل
+            </record>   
+
+				or
+
+#إذا كانت تحتاج إلى التكرار على السجلات
+        <field name="code">model.search([]).check_next_invoice_date()</field>
+
+debugmood > Settings > Technical > Automation > Scheduled Actions >  Run Manually           
+________________________________________________________________________________________________            
+36- Reports Actions (Pdf & Html) in Odoo.             
+sudo apt install wkhtmltopdf
+/home/ayman/odoo/odoo/odoo/custom_addons/app_one/reports/property_report.xml
+>>> property_report.xml <<<
+Settings > Companies(Configure Document Layout)
+
+<odoo>
+    <record id="property_report" model="ir.actions.report">
+        <field name="name">Property Report</field>
+        <field name="model">property</field>
+        <field name="report_type">qweb-html</field>  <!-- <field name="report_type">qweb-pdf</field> -->
+        <field name="binding_model_id" ref="model_property"/>
+        <field name="binding_type">report</field>
+        <field name="report_name">app_one.property_report_template</field>	#addon.template
+    </record>
+    <template id="property_report_template">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">  <!-- <t t-call="web.basic_layout"> -->
+                <t t-foreach="docs" t-as="o">
+                    <h1>Property Report</h1>
+                    <style>
+                        table {
+                        width: 100%;
+                        border:1px solid #b3adad;
+                        border-collapse:collapse;
+                        padding:5px;
+                        }
+                        table th {
+                        border:1px solid #b3adad;
+                        padding:5px;
+                        background: #f0f0f0;
+                        color: #313030;
+                        text-align:center;
+                        }
+                        table td {
+                        border:1px solid #b3adad;
+                        text-align:center;
+                        padding:5px;
+                        background: #ffffff
+                        color: #313030
+                        }
+                    </style>
+                    <table>
+                        <thead>
+                            <th colspan="4">General Information</th>
+                        </thead>
+                        <tbody>
+                            <td>Name</td>
+                            <td><t t-esc="o.name"/></td>
+                            <td>Postcode</td>
+                            <td><t t-esc="o.postcode"/></td>
+                        </tbody>
+                        <thead>
+                            <th colspan="4">Additional Information</th>
+                        </thead>
+                        <tbody>
+                            <td>Owner</td>
+                            <td><t t-esc="o.owner_id.name"/></td>  <!-- <td><span t-field="o.owner_id"/></td> -->
+                            <td>Phone</td>
+                            <td><t t-esc="o.owner_phone"/></td>
+                        </tbody>
+                    </table>
+                    <br/>
+                    <table>
+                        <thead>
+                            <th>Description</th>
+                            <th>Area</th>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="o.line_ids" t-as="line">
+                                <tr>
+                                    <td>
+                                        <t t-esc="line.description"/>
+                                    </td>
+                                    <td>
+                                        <t t-esc="line.area"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
+
+>>> __manifest__.py <<<
+    'data': ['reports/property_report.xml',],
+_____________________________
+Barcode
+t-options="{'widget': 'barcode', 'symbology': 'auto', 'img_style': barcode_size}"
+                            <t t-if="reference_code">
+                                <div t-out="reference_code" t-options="{'widget': 'barcode', 'symbology': 'auto', 'img_style': 'width:100%; height:20mm'}"
+                                     style="display: block; text-align: left; margin: 0; padding: 0;"/>
+                            </t>
+                            <div class="o_label_extra_data">
+                                <t t-out="reference_code"/>
+                            </div>
+_____________________________
+subscription_package_views.xml
+<button type="object" name="action_label_card" string="Print Label"/>
+subscription_package.py
+    def action_label_card(self):
+        """For printing Label card"""
+        ref = [self.name]
+        data = {
+            'ref': ref,
+            'record': self,
+            'name': self.partner_id.name,
+            'start_date': self.start_date,
+            'partner_id': self.partner_id.id,
+            'end_date': self.next_invoice_date,
+            'reference_code': str(self.reference_code),
+            'total_with_tax': self.total_with_tax,
+        }
+        action = self.env.ref('subscription_package.action_label_card').report_action(
+            None, data=data)
+        action.update({'close_on_report_download': True})
+        return action
+subscription_label_report.xml
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!--Report for subscription id card-->
+        <record id="action_label_card" model="ir.actions.report">
+            <field name="name">Label Card</field>
+            <field name="model">subscription.package</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">subscription_package.report_label_card</field>
+            <field name="report_file">subscription_package.report_label_card</field>
+            <field name="paperformat_id" ref="subscription_package.paperformat_label_sheet_dymo1"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <record id="paperformat_label_sheet_dymo1" model="report.paperformat">
+            <field name="name">Dymo Label Sheet1</field>
+            <field name="default" eval="True"/>
+            <field name="format">custom</field>
+            <field name="page_height">28.65</field>
+            <field name="page_width">48.156</field>
+            <field name="orientation">Landscape</field>
+            <field name="margin_top">0</field>
+            <field name="margin_bottom">0</field>
+            <field name="margin_left">0</field>
+            <field name="margin_right">0</field>
+            <field name="disable_shrinking" eval="True"/>
+            <field name="dpi">96</field>
+        </record>
+<!-- or -->
+	<record id="paperformat_label_sheet" model="report.paperformat">
+            <field name="name"> Labelll Sheet</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="page_height">0</field>
+            <field name="page_width">0</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">0</field>
+            <field name="margin_bottom">0</field>
+            <field name="margin_left">0</field>
+            <field name="margin_right">0</field>
+            <field name="disable_shrinking" eval="True"/>
+            <field name="dpi">96</field>
+        </record>
+
+        <template id="report_label_card">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <t t-call="web.html_container">
+                        <t t-set="barcode_size" t-value="'width:100%;height:12.5mm'"/>
+                        <t t-set="table_style" t-value="'width:100%;height:32mm;'"/>
+                        <t t-set="padding_page" t-value="'padding: 2mm'"/>
+                        <div class="o_label_sheet o_label_dymo" t-att-style="padding_page">
+                            <div class="o_label_full" t-att-style="table_style">
+                                <div class="text-start o_label_small_barcode">
+                                    <div style="font-size: 20px; margin-bottom: 0.5px; text-align: center;">
+                                        <strong t-esc="name"/>
+                                    </div>
+
+                                    <t t-if="reference_code">
+                                        <!-- `quiet=0` to remove the left and right margins on the barcode -->
+                                        <div t-out="reference_code" style="padding:0"
+                                             t-options="{'widget': 'barcode', 'quiet': 0, 'symbology': 'auto', 'img_style': barcode_size}"/>
+                                        <div class="o_label_name"
+                                             style="height:1.7em;background-color: transparent;">
+                                            <span t-out="reference_code"/>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>
+________________________________________________________________________________________________
+37- Env Object in Odoo.
+>>> property.py <<<
+    def action(self):	#(1)
+        pass
+
+    def action(self):	#(2)
+        print(self.env) #env انستيت مينت
+    def action(self):	#(3)
+        print(self.env.user.login)	#login = mail
+    def action(self):	#(4)
+        print(self.env.user.name)
+    def action(self):	#(5)
+        print(self.env.uid)	#uid = user.id اختصار       
+    def action(self):	#(6)
+        print(self.env.company.name)	#اسم الشركه
+    def action(self):	#(7)
+        print(self.env.context)	#اللغه,الوقت,يوزر اى دى, اى دى الشركه        
+    def action(self):	#(8)
+        print(self.env.cr)	#ليها علاقه بالداتا بيز
+    def action(self):	#(9)
+        print(self.env['owner'].create({
+            'name': 'name two',
+            'phone': '01000000000'
+        }))        
+    def action(self):	#(10)
+        print(self.env['owner'].search([]))
+                        
+>>> property_views.xml <<<
+                <form>
+                    <sheet>
+                        <header>
+                            <button name="action" type="object" class="btn-primary" string="Action"/>
+________________________________________________________________________________________________
+38- Sequences in Odoo.
+
+>>> sequence.xml <<<	#/home/ayman/odoo/odoo/odoo/custom_addons/app_one/data/sequence.xml
+<odoo>
+    <data noupdate="1">
+        <record id="property_sequence" model="ir.sequence">
+            <field name="name">Property Seq.</field> 
+            <field name="code">property_seq</field> <!--يجب ان يكون اسم فريد-->
+            <field name="prefix">PRT</field>	<!--البادئه -->
+            <field name="padding">5</field> <!--عدد الأرقام التي يجب أن يحتوي عليها الرقم التسلسلي==>
+            <field name="number_next">1</field>	<!-- الرقم الذي سيبدأ منه التسلسل-->
+            <field name="number_increment">1</field> <!-- عدد الزيادة في كل مرة-->
+            <field name="company_id" eval="False"/> <!-- التسلسل ليس مخصصًا لشركة معينة-->
+<!-- إذا كان هناك أكثر من شركة في النظام، فكل شركة ستتمكن من استخدام تسلسل منفصل
+عندما تفتح صفحة الشركة، ستجد المعرف (ID) الخاص بكل شركة في الرابط الموجود في شريط العنوان (URL). على سبيل المثال، إذا كان الرابط يحتوي على .../view_form?id=1 فهذا يعني أن الشركة ذات المعرف 1.
+<field name="company_id" eval="1"/>  -->
+
+        </record>
+    </data>
+</odoo>
+
+Legend (for prefix, suffix)
+Current Year with Century: %(year)s
+Current Year without Century: %(y)s
+Month: %(month)s
+Day: %(day)s
+Day of the Year: %(doy)s
+Week of the Year: %(woy)s
+Day of the Week (0:Monday): %(weekday)s
+Hour 00->24: %(h24)s
+Hour 00->12: %(h12)s
+Minute: %(min)s
+Second: %(sec)s
+
+>>> __manifest__.py <<<
+    'data': [
+        'security/',
+        'data/sequence.xml', #يراعى الترتيب
+        'views/,
+        'reports/',
+    ],
+>>> property.py <<<
+    ref = fields.Char(default='New', readonly=1, copy=False)
+    
+    @api.model
+    def create(self, vals):
+        res = super(Property, self).create(vals)
+        if res.ref == 'New':
+            res.ref = self.env['ir.sequence'].next_by_code('property_seq')
+        return res
+or
+    @api.model_create_multi
+    def create(self, values):
+        for vals in values:
+            if not vals.get('reference') or vals['reference'] == 'New':
+                vals['reference'] = self.env['ir.sequence'].next_by_code('hospital.appointment')
+        return super(Hospitalappointment, self).create(values)
+        
+>>> property_views.xml <<<
+                        <div class="oe_title">
+                            <label for="ref"/>
+                            <h1>
+                                <field name="ref"/>
+                            </h1>
+________________________________________________________________________________________________
+39- Enforcing Edit Restrictions and​ Cross-Model Creation.
+>>> property_views.xml <<<
+                            <h3>
+                                <field name="name" readonly="state == 'closed'"/>
+                            </h3>
+# عندما تكون الحاله (closed) تكون الخليه للقرائه فقط 
+
+                            <button name="action_draft" type="object" class="btn-primary" string="Set To Draft"
+                                    invisible="state in ('draft', 'closed')"/>	#غير مرايه اذ كانت مغلق او درافت
+________________________________________________________________________________________________                                
+40- Cross-Model Creation.
+>>> property_history.py <<<
+
+from odoo import models, fields
+
+class PropertyHistory(models.Model):
+    _name = 'property.history'
+    _description = 'Property History'
+
+    user_id = fields.Many2one('res.users')
+    property_id = fields.Many2one('property')
+    old_state = fields.Char()
+    new_state = fields.Char()
+>>> __init__.py <<<
+from . import property_history
+>>> property_history_views.xml <<<
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="property_history_tree_view">
+            <field name="name">property history tree</field>
+            <field name="model">property.history</field>
+            <field name="arch" type="xml">
+                <tree create="0" edit="0" delete="0">
+                    <field name="user_id"/>
+                    <field name="property_id"/>
+                    <field name="old_state"/>
+                    <field name="new_state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="property_history_form_view">
+            <field name="name">property history form</field>
+            <field name="model">property.history</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0" delete="0">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="user_id"/>
+                                <field name="property_id"/>
+                            </group>
+                            <group>
+                                <field name="old_state"/>
+                                <field name="new_state"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="property_history_search_view">
+            <field name="name">property history search</field>
+            <field name="model">property.history</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="user_id" filter_domain="['|', ('user_id','ilike',self), ('property_id','ilike',self)]" string="Search"/>
+
+                    <filter name="group_user" string="User" context="{'group_by': 'user_id'}"/>
+                    <separator/>
+                    <filter name="group_property" string="Property" context="{'group_by': 'property_id'}"/>
+                </search>
+            </field>
+        </record>
+
+
+        <!-- actions opening views on models -->
+
+        <record model="ir.actions.act_window" id="property_history_action">
+            <field name="name">Property History</field>
+            <field name="res_model">property.history</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem
+                id="properties_history_menu_item"
+                name="History"
+                parent="properties_menu"
+                action="property_history_action"/>
+    </data>
+</odoo>
+>>> ir.model.access.csv <<<
+access_property_history,property_history,model_property_history,base.group_user,1,1,1,1
+>>> __manifest__.py <<<
+    'data': ['views/property_history_views.xml',],
+>>> property.py <<<
+    def action_draft(self):
+        for rec in self:
+            rec.create_history_recoed(rec.state, 'draft')
+            rec.state = 'draft'
+
+    def action_pending(self):
+        for rec in self:
+            rec.create_history_recoed(rec.state, 'pending')
+            rec.write({
+                'state': 'pending'
+            })
+
+    def action_sold(self):
+        for rec in self:
+            rec.create_history_recoed(rec.state, 'sold')
+            rec.state = 'sold'
+
+    def action_closed(self):
+        for rec in self:
+            rec.create_history_recoed(rec.state, 'closed')
+            rec.state = 'closed'
+
+    def create_history_recoed(self, old_state, new_state):
+        for rec in self:
+            rec.env['property.history'].create({
+                'user_id': rec.env.uid,
+                'property_id': rec.id,
+                'old_state': old_state,
+                'new_state': new_state,
+            })
+________________________________________________________________________________________________
+41- Create Wizards in Odoo
+#الـ wizard بيكون مربوط بالـ TransientModel بيكون الافتراضى بتاعها
+/home/ayman/odoo/odoo/odoo/custom_addons/app_one/wizard		#ننشئ فولدر جديد باسم wizard
+>>> change_state_wizard.py <<<
+from odoo import models, fields
+
+
+class ChangeState(models.TransientModel):
+    _name = 'change.state'
+
+    property_id = fields.Many2one('property')
+    state = fields.Selection([
+        ('draft', 'Draft'),
+        ('pending', 'Pending'),
+    ], default='draft')
+    reason = fields.Char()
+
+    def action_confirm(self):
+        print("inside action_confirm")
+        if self.property_id.state == 'closed':
+            self.property_id.state = self.state
+            self.property_id.create_history_recoed('closed', self.state, self.reason)
+            
+>>> wizard/__init__.py <<<
+from . import change_state_wizard
+
+>>> __init__.py <<<
+from . import wizard
+
+>>> ir.model.access.csv <<<
+access_change_state,change_state,model_change_state,base.group_user,1,1,1,1
+
+>>> change_state_wizard_view.xml <<<
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="">
+            <field name="name">change state wizard form</field>
+            <field name="model">change.state</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <field name="property_id" invisible="1"/>
+                        <field name="state" required="1"/>
+                        <field name="reason" required="1"/>
+                    </group>
+                    <footer>
+                        <button string="Confirm" name="action_confirm" type="object"
+                                class="btn-primary" data-hotkey="q"/>
+                        <button string="Cancel" special="cancel" data-hotkey="x" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="change_state_wizard_action">
+            <field name="name">Change State</field>
+            <field name="res_model">change.state</field>
+            <field name="target">new</field>
+            <field name="view_mode">form</field>
+        </record>
+    </data>
+</odoo>
+
+>>> __manifest__.py <<<
+    'data': [
+        'security/ir.model.access.csv',
+        'data/sequence.xml',
+        'views/views.xml',,
+        'wizard/change_state_wizard_view.xml',		#يكون الترتيب كما موضح
+        'reports/property_report.xml',
+    ],
+
+>>> property_views.xml <<< 	#لعمل سيرفر اكشن
+            <record model="ir.actions.server" id="property_change_state_action_server">
+              <field name="name">Change Satate</field>
+              <field name="model_id" ref="model_property"/>
+              <field name="binding_model_id" ref="model_property"/>
+              <field name="state">code</field>
+              <field name="code">
+                  action = records.action_open_change_state_wizard()
+              </field>
+            </record>
+
+>>> property.py <<<
+    def create_history_recoed(self, old_state, new_state, reason=""):	#فقطreasonموجوده من قبل ضيفنا الـ
+        for rec in self:
+            rec.env['property.history'].create({
+                'user_id': rec.env.uid,
+                'property_id': rec.id,
+                'old_state': old_state,
+                'new_state': new_state,
+                'reason': reason or "",
+            })
+
+							# Open Wizard By Method/Action (menuitem, action_server, button)
+    def action_open_change_state_wizard(self):
+        action = self.env["ir.actions.actions"]._for_xml_id("app_one.change_state_wizard_action")
+        action['context'] = {'default_property_id': self.id}
+        return action
+        
+def custom_action_post(self):	#button_inherit/ inherit button/inherit action
+        if self.ref:
+            existing_bills = self.search([('ref', '=', self.ref), ('id', '!=', self.id)])
+            messeage = []
+            if existing_bills:
+                for bill in existing_bills:
+                    messeage.append(bill.name)
+                action = self.env["ir.actions.actions"]._for_xml_id("unique_bill_ref.check_reference_wizard_action")
+                action['context'] = {'active_id': self.id,'default_warning': _(f"There is already an invoice: {str(messeage)} with the same reference: {self.ref}")}
+            else:
+                return self.action_post()
+        return action
+        
+from odoo import models, fields, api
+class CheckReferenceWizard(models.TransientModel):
+    _name = 'check.reference.wizard'
+    _description = 'Check Reference Wizard'
+    warning = fields.Char()
+    
+def action_confirm(self):		
+        print("inside action_confirm")
+        self.env['account.move'].browse(self.env.context.get('active_id')).action_post()
+        return
+					# Open Wizard By Button
+<button name="%(change_state_wizard_action)d" string="Launch Plan" type="action" groups="hr.group_hr_user" invisible="not active"/>
+
+        ____________________________________________________________________________________________________________________________________________________________________________________________
+اول طريقه عشلن افتح الـ wizard وهى من الـ menuitem 				*************	*************#Open Wizard
+جوة ملف الـ xml نعمل الـ record
+>>>wizard/test_wizard.xml<<<
+
+<record model="ir.actions.act_window" id="test_wizard_action">
+            <field name="name">Test Wizard</field>
+            <field name="res_model">test.wizard</field>
+            <field name="target">new</field>
+            <field name="view_mode">form</field>
+        </record>
+    </data>
+</odoo>
+وننادى على الـ id بتاعه جوا الـ action فى الـ menuitem
+			#__________________menuitem اول طريقه من__________________
+>>>views/menu.xml<<<
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <menuitem id="test_open_wizard_menu"
+              name="Test Wizard"
+              action="test_wizard_action"	#recordالخاص بالـ idالـ
+              parent="sale.res_partner_menu"/>
+</odoo>
+ونراعى الترتيب جوا ملف الـ __manifest__.py انه يكون الـ action قبل الـ menu
+			#__________________button ثانى طريقه من__________________
+						if type="action"
+>>>views/sale_order.xml<<<
+
+<button name="%(test_wizard_action)d" string="Open Wizard" type="action" class="btn-primary"/>	#recordالخاص بالـ idالـ
+			#__________________button ثالث طريقه من__________________
+						if type="object"
+>>>views/sale_order.xml<<<
+
+<button name="action_open_test_wizard" string="Open Wizard" type="object" class="btn-primary"/>	#Methodاسم الـ
+Method بكون معرف فى المديول نفسه مش الويزرد
+>>>models/sale_order.py<<<
+
+        def action_open_test_wizard(self):
+        action = self.env["ir.actions.actions"]._for_xml_id("open_wizard.test_wizard_action")	#بكتب اسم الادون الاول . اسم الريكورد	#recordالخاص بالـ idالـ
+        action['context'] = {'default_name': self.name}	#بكتب القيم اللذى عاوز ابعتها مع الاكشن تظهرلى فى ال ويزيرد
+        return action		
+			#__________________button رابع طريقه من__________________
+>>>views/sale_order.xml<<<
+
+<button name="action_open_test_wizard1" string="Open Wizard object" type="object" class="btn-primary"/>
+Method بكون معرف فى المديول نفسه مش الويزرد
+recordوفالطريقه ده مش محتاج اعرف 
+>>>models/sale_order.py<<<
+
+    def action_open_test_wizard1(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Test Wizard',
+            'res_model': 'test.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_name': _(f"There is already an invoice"),	#default_name default_اسم الفيلد الموجود فالويزرد
+                'active_id': self.id,
+            },
+        }
+			#__________________actions.server خامس طريقه من__________________
+>>>wizard/test_wizard.xml<<<
+        <record model="ir.actions.server" id="model_sale_order_action_open_test_wizard">
+            <field name="name">Open Test Wizard</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="binding_model_id" ref="sale.model_sale_order"/>
+            <field name="binding_view_types">form</field>
+            <field name="state">code</field>
+            <field name="code">
+                action = records.action_open_test_wizard()	#Methodاسم الـ
+            </field>
+        </record>
+    </data>
+</odoo>
+
+________________________________________________________________________________________________________________________________________________
+
+____________________________________________________________________________________________________________________________________________________________________________________________
+42- Command Tuples/
+
+>>> property_history.py <<<
+class PropertyHistory(models.Model):
+    _name = 'property.history'
+
+    line_ids = fields.One2many('property.history.line', 'history_id')	#One2manyهنضيف بس الـ 
+
+class PropertyHistoryLine(models.Model):
+    _name = 'property.history.line'
+    _description = 'Property History line'
+
+    history_id = fields.Many2one('property.history')
+    area = fields.Char()
+    new_state = fields.Float()
+    description = fields.Char()
+    
+>>> ir.model.access.csv <<<
+access_property_history_line,property_history_line,model_property_history_line,base.group_user,1,1,1,1
+
+>>> property_history_views.xml <<<
+                        <notebook>
+                            <page string="Bedrooms">
+                                <field name="line_ids" readonly="1">
+                                    <tree>
+                                        <field name="description"/>
+                                        <field name="area"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+
+>>> property.py <<<
+    def create_history_recoed(self, old_state, new_state, reason=""):
+        for rec in self:
+            rec.env['property.history'].create({
+                'user_id': rec.env.uid,
+                'property_id': rec.id,
+                'old_state': old_state,
+                'new_state': new_state,
+                'reason': reason or "",
+                'line_ids': (0, 0, {'description': line.description, 'area': line.area}) for line in rec.line_ids,		#line_idsضيفنا سطر جديد لانشاء الـ 
+            })
+    #الـ(line_ids)اللى جوا الـ property.history هى الجديده (الفاضيه) 
+    #الـ(rec.line_ids)ده جوا الـself يعنى الـ(line_ids)اللى جوا الـ property هى القديمه (اللى فيها القيم)
+________________________________________________________________________________________________
+43- DateTime​ Default Values
+>>> property.py <<<
+    create_time = fields.Datetime(default=fields.Datetime.now())
+    next_time = fields.Datetime(compute='_compute_next_time')
+    
+    @api.depends('create_time')
+    def _compute_next_time(self):
+        for rec in self:
+            if rec.create_time:
+                rec.next_time = rec.create_time + timedelta(hours=6)
+            else:
+                rec.next_time = False
+    
+>>> property_views.xml <<<
+             <field name="create_time" readonly="1"/>
+             <field name="next_time" readonly="1"/>
+________________________________________________________________________________________________
+44- Security in Odoo: Access Rights and Groups(Part 1).
+>>> security.xml <<<
+<odoo>
+    <record id="property_manager_group" model="res.groups">
+        <field name="name">Property Manager</field>
+    </record>
+</odoo>
+
+>>> __manifest__.py <<<
+    'data': [
+        'security/security.xml',		#بيكون ترتيبه اول حاجه
+        'security/ir.model.access.csv',
+        'data/sequence.xml',
+        'views/views.xml',
+        'wizard/change_state_wizard_view.xml',
+        'reports/property_report.xml',
+    ],
+
+Apps>Base>Upgrade #Base نعمل تحديث للـ 
+setting>Manage Users>Other
+
+>>> ir.model.access.csv <<<
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_property,property,model_property,app_one.property_manager_group,1,1,1,1
+access_property,property,model_property,,1,0,0,0
+
+>>> base_menu.xml <<<
+        <menuitem
+                id="configration_menu"
+                name="Configration"
+                parent="real_estate_root_menu"
+                groups="app_one.property_manager_group"		#الجروب اللى ليه الصلاحيه فقط
+        />
+
+>>> property_views.xml <<<
+    <field name="description" required="1" groups="app_one.property_manager_group"/>
+    
+>>> property.py <<<
+    garage = fields.Boolean(groups="app_one.property_manager_group")
+    ________________________________________________________________________________________________
+    
+45- Understanding Search Domain in Odoo.
+>>> property.py <<<
+    def action(self):
+        print(self.env['owner'].search([]))	#فاضى يعنى يرجع كل الريكور
+        
+    def action(self):
+        print(self.env['property'].search([]))
+#الـ Domin عباره عن ليست [] جواها مجموعه من الـ tuples او الـ logical operator
+    def action(self):
+        [('name', '=', 'Property 1'), ()]   #=,>,<,in تستخدم لو ليست او توبيل []('', ''),!=,like,ilike
+        print(self.env['property'].search([]))
+
+    def action(self):		#لازم الاتنين يتححققو
+        print(self.env['property'].search([('name', '=', 'Property 1'), ('postcode', '!=', '123')]))
+        
+    def action(self):
+        print(self.env['property'].search(['|', ('name', '=', 'Property 1'), ('postcode', '!=', '123')]))	#'|' or
+
+    def action(self):
+        print(self.env['property'].search(['&', ('name', '=', 'Property 1'), ('postcode', '!=', '13')]))	#'&' and
+        
+    def action(self):
+        print(self.env['property'].search(['!', ('name', '=', 'Property 1'), ('postcode', '!=', '13')]))	#'!' not بيعكس الاول بس
+________________________________________________________________________________________________
+46- Security in Odoo: Record Rules(Part 2).
+>>> security.xml <<<
+<odoo>
+    <record id="property_category" model="ir.module.category">
+        <field name="name">Property Category</field>
+    </record>
+    <record id="property_manager_group" model="res.groups">
+        <field name="name">Property Manager</field>
+        <field name="category_id" ref="app_one.property_category"/>
+    </record>
+    <record id="property_user_group" model="res.groups">
+        <field name="name">Property User</field>
+        <field name="category_id" ref="app_one.property_category"/>
+    </record>
+    <record id="property_record_rule_by_user" model="ir.rule">
+        <field name="name">Property By User</field>
+        <field name="model_id" ref="app_one.model_property"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+</odoo>
+#Apps => Base-Module install Request => uninstall	#لاخفاء شاشه التطبيقات
+#menu items => Apps => Visibility => Adminstration/settings
+
+>>> menu.xml <<<		#groups
+<menuitem name="Configuration" id="menu_configuration" parent="menu_hospital_root"
+              sequence="100" groups="om_hospital.group_hospital_doctors"/>
+              
+>>> appointment_views.xml <<<
+	<field name="create_uid" groups="om_hospital.group_hospital_doctors"/>
+	
+>>> ir.model.access.csv <<<
+access_patient_tag_receptionist,patient_tag_receptionist,model_patient_tag,om_hospital.group_hospital_receptionist,1,1,1,0
+access_patient_tag_doctor,patient_tag_doctor,model_patient_tag,om_hospital.group_hospital_doctors,1,1,1,1
+# model_patient_tag نفس الموديل ولكن صلاحيات مختلفه
+
+>>> security.xml <<<
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record model="ir.module.category" id="module_category_hospital">
+            <field name="name">Hospital</field>
+            <field name="sequence">1</field>
+        </record>
+
+        <record id="group_hospital_receptionist" model="res.groups">
+            <field name="name">Receptionist</field>
+            <field name="category_id" ref="om_hospital.module_category_hospital"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">this user will have access to Appointments.</field>
+        </record>
+
+        <record id="group_hospital_doctors" model="res.groups">
+            <field name="name">Doctors</field>
+            <field name="category_id" ref="om_hospital.module_category_hospital"/>
+            <field name="implied_ids" eval="[(4, ref('om_hospital.group_hospital_receptionist'))]"/> <!-- عشان يبقى booleanعلى شكل ليست مش -->
+            <field name="comment">this user will have access to Patient details.</field>
+        </record>
+
+        <record id="receptionist_own_appointment_rule" model="ir.rule">
+            <field name="name">Receptionest: view own records</field>
+            <field name="model_id" ref="model_hospital_appointment"/>
+            <field name="groups" eval="[Command.link(ref('om_hospital.group_hospital_receptionist'))]"/>
+            <field name="domain_force">[('create_uid', '=', user.id)]</field> <!--  يظهرله اللى هو انشاه بس -->
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="doctor_view_all_appointment_rule" model="ir.rule">
+            <field name="name">Doctor: view all records</field>
+            <field name="model_id" ref="model_hospital_appointment"/>
+            <field name="groups" eval="[Command.link(ref('om_hospital.group_hospital_doctors'))]"/>
+            <field name="domain_force">[]</field> <!-- يظهرله كله -->
+        </record>
+
+    </data>
+</odoo>
+
+
+________________________________________________________________________________________________
+47- Enhance Your Odoo Form Views​ with 'web_ribbon'.​ # شريط / علامه /حداد 
+>>> property_views.xml <<<
+   <sheet>
+       <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+       <widget name="web_ribbon" title="Sold" bg_color="text-bg-success" invisible="state != 'sold'"/>
+       <header>
+________________________________________________________________________________________________
+48- Enhance Your Odoo Form Views​ with 'Smart Buttons'.​
+
+>>> property_views.xml <<<
+  <sheet>
+      <div name="button_box" class="oe_button_box">
+           <button name="action_open_related_owner" type="object" icon="fa-user" string="Owner"
+                                    invisible="not owner_id"/>
+      </div>  
+      
+#Ui icon => https://www.odoo.com/documentation/17.0/developer/reference/user_interface/icons.html#icons
+# All Icons => https://fontawesome.com/v4/icons/
+
+>>> property.py <<<
+    def action_open_related_owner(self):
+        action = self.env["ir.actions.actions"]._for_xml_id("app_one.owner_action")
+        view_id = self.env.ref("app_one.owner_form_view").id
+        action['res_id'] =  self.owner_id.id
+        action['views'] =  [[view_id, 'form']]
+        return action
+        
+# action_open_related_owner => divاللى جوا الـ buttonاسم الـ 
+# app_one => addonاسم الـ 
+# owner_action =>owner_views.xmlاللى موجود فى (ir.actions.act_window") اسم الاكشن 
+# owner_form_view =>ownerاسم الفورم الى يخص الـ
+________________________________________________________________________________________________
+49- Adding Custom Buttons to​ Inherited Form Views in Odoo.
+>>> account_move.py <<<
+from odoo import models
+
+class AccountMove(models.Model):
+    _inherit = 'account.move'
+
+    def action_do_something(self):
+        print(self, "inside action_do_something")
+        
+>>> __init__.py <<<
+from . import account_move
+
+>>> account_move_views.xml <<<
+<odoo>
+    <record model="ir.ui.view" id="view_move_form_inherit">
+        <field name="name">view account move form</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_do_something" string="Do SomeThing" type="object" class="btn-primary"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+
+>>> __manifest__.py <<<
+    'data': ['views/account_move_views.xml',],
+    __________________
+<odoo>
+    <data>
+        <template id="purchase_report_inherit" inherit_id="purchase.report_purchaseorder_document">
+
+            <xpath expr="//table//th[@name='th_taxes']" position="attributes">
+                <attribute name="t-if">False</attribute>
+            </xpath>
+            <xpath expr="//table//td[@name='td_taxes']//span" position="attributes">
+                <attribute name="t-if">False</attribute>
+            </xpath>
+
+            <xpath expr="//table//th[@name='th_date_req']" position="attributes">
+                <attribute name="t-if">False</attribute>
+            </xpath>
+            <xpath expr="//table//td[span[@t-field='line.date_planned']]" position="attributes">
+                <attribute name="t-if">False</attribute>
+            </xpath>
+
+        </template>
+    </data>
+</odoo>
+or 
+            <xpath expr="//table//th[2]" position="attributes">
+                <attribute name="t-if">False</attribute>
+            </xpath>
+            <xpath expr="//table//td[2]" position="attributes">
+                <attribute name="t-if">False</attribute>
+            </xpath>
+or
+            <xpath expr="//table//th[@name='th_taxes']" position="replace">
+                <th name="th_taxes" style="visibility: hidden; width: 100px;"></th>
+            </xpath>
+or
+<odoo>
+    <data>
+        <template id="purchase_report_inherit" inherit_id="purchase.report_purchaseorder_document">
+
+            <xpath expr="//table//th[@name='th_taxes']" position="replace"/>
+            <xpath expr="//table//td[@name='td_taxes']" position="replace"/>
+
+            <xpath expr="//table//th[@name='th_date_req']" position="replace"/>
+            <xpath expr="//table//td[span[@t-field='line.date_planned']]" position="replace"/>
+
+            <xpath expr="//table//th[@name='th_description']" position="replace">
+                <th name="th_description" style="width:578px;"><strong>Description</strong></th>
+            </xpath>
+
+        </template>
+    </data>
+</odoo>
+________________________________________________________________________________________________
+50- Adding Custom Fonts and ​Using Them in Reports in Odoo.
+https://fonts.google.com/ 	#موقع جوجل للخطوط
+fonts	#.../app_one/static/src/fonts
+1- نضغط على الخط=>نضغط Getfont=>وبعدين Download
+2- نفك الضغط ملف الخط اللى اتحمل عشان ناخد ال .ttf
+3- ننشئ فولدر fonts فى المسار /app_one/static/src/fonts ونحط جواه كل .ttf اللى حدناهم من ملف الخط
+>>> font.css <<<
+@font-face {
+font-family: "SixtyfourConvergence";
+src: url(/app_one/static/src/fonts/SixtyfourConvergence-Regular-VariableFont_BLED,SCAN,XELA,YELA.ttf)
+}
+
+@font-face {
+font-family: "Workbench";
+src: url(/app_one/static/src/fonts/Workbench-Regular-VariableFont_BLED,SCAN.ttf)
+}
+>>> __manifest__.py <<<
+    'assets': {
+        'web.assets_backend': ['app_one/static/src/css/property.css'],
+        'web.report_assets_common': ['app_one/static/src/css/font.css']
+    },
+
+>>> property_report.xml <<<
+<h1 style="font-family: 'Workbench';">Property Report</h1>
+________________________________________________________________________________________________
+51- Adding Unit Test To Your App.
+tests	#.../app_one/tests
+
+>>> test_poroperty.py <<<
+from odoo.tests.common import TransactionCase
+from odoo import fields
+
+class TestProperty(TransactionCase):
+
+    def setUp(self, *args, **kwargs):
+        super(TestProperty, self).setUp()
+
+        self.property_01_record = self.env['property'].create({
+            'ref': 'prt1000',
+            'name': 'Property 1000',
+            'description': 'Property 1000 description',
+            'postcode': '1010',
+            'date_availability': fields.Date.today(),
+            'bedrooms': 10,
+            'expected_Price': 10000,
+        })
+
+    def test_property_01_record(self):
+        property_id = self.property_01_record
+
+        self.assertRecordValues(property_id, [{
+            'ref': 'prt1000',
+            'name': 'Property 1000',
+            'description': 'Property 1000 description',
+            'postcode': '1010',
+            'date_availability': fields.Date.today(),
+            'bedrooms': 10,
+            'expected_Price': 10000,
+        }])
+
+>>> __init__.py <<<
+from . import test_poroperty
+
+#Run/Debug Configrations
+-c odoo.conf -u app_one --test-enable
+________________________________________________________________________________________________
+52- APIs in Odoo: Part 1 - Create Endpoint.
+>>> controllers/__init__.py <<<
+from . import test_api
+
+>>> app_one/__init__.py <<<
+from . import controllers
+
+>>> test_api.py <<<
+from odoo import http
+
+
+class TestApi(http.Controller):
+
+    @http.route("/api/test", methods=["GET"], type="http", auth="none", csrf=False, cors='*')
+    def test_endpoint(self):
+        print("inside test_endpoint method")
+        return "Hello from Test API!"
+        #هاااااااااااااااااااااااام
+#اذ كان لدينا اكثر من database يجب ان نعمل filtration عن طريق الـodoo.conf => الاسم = db_name 
+**>> Terminal <<**
+#curl -X GET http://127.0.0.1:8069/api/test
+
+**>> Postman <<**
+[GET] http://127.0.0.1:8069/api/test
+________________________________________________________________________________________________
+53- APIs in Odoo: Part 2 (CRUD) 1. Create Operation (Part 1).
+
+>>> controllers/__init__.py <<<
+from . import property_api
+
+>>> property_api.py <<<
+class PropertyApi(http.Controller):
+import json
+from odoo import http
+from odoo.http import request
+
+    @http.route("/v1/property", methods=["POST"], type="http", auth="none", csrf=False, cors='*')
+    def post_property(self):
+        args = request.httprequest.data.decode()
+        vals = json.loads(args)
+        res = request.env['property'].sudo().create(vals)
+        if res:
+           return request.make_json_response({
+               "message": "Property has been created successfully",
+           }, status=201)
+
+**>> Postman <<**
+[POST] http://127.0.0.1:8069/v1/property
+Body => raw (JSON)
+{
+    "name": "Property From api 1",
+    "postcode": "123456",
+    "garden_orientation": "north",
+    "bedrooms": 10
+} 
+________________________________________________________________________________________________
+54- APIs in Odoo: Part 2 (CRUD) 1. Create Operation (Part 2).
+>>> property_api.py <<<
+class PropertyApi(http.Controller):
+import json
+from odoo import http
+from odoo.http import request
+
+    @http.route("/v1/property/json", methods=["POST"], type="json", auth="none", csrf=False, cors='*')
+    def post_property_json(self):
+        args = request.httprequest.data.decode()
+        vals = json.loads(args)
+        res = request.env['property'].sudo().create(vals)
+        if res:
+            return [{
+                "message": "Property has been created successfully"
+            }]
+
+**>> Postman <<**
+[POST] http://127.0.0.1:8069/v1/property/json
+Body => raw (JSON)
+{
+    "name": "Property From api 1 json",
+    "postcode": "123456",
+    "garden_orientation": "north",
+    "bedrooms": 10
+}
+
+class PropertyApi(http.Controller):
+    @http.route("/v1/property", methods=["POST"], type="http", auth="none", csrf=False, cors='*')
+    def post_property(self):
+        args = request.httprequest.data.decode()
+        vals = json.loads(args)
+        if not vals.get('name'):
+            return request.make_json_response({
+                "error": "Name is required!",
+            }, status=400)
+        try:
+            res = request.env['property'].sudo().create(vals)
+            if res:
+                return request.make_json_response({
+                    "message": "Property has been created successfully",
+                    "id": res.id,
+                    "name": res.name,
+                }, status=201)
+        except Exception as error:
+            return request.make_json_response({
+                "error": error,
+            }, status=400)
+
+___________
+    @http.route("/api/v1/CreateUser", methods=["POST"], type="http", auth="public", csrf=False, cors='*')
+    def create_res_user(self):
+        try:
+            args = request.httprequest.data.decode()
+            vals = json.loads(args)
+            if not vals.get('name') and vals.get('login') and vals.get('password'):
+                return invalid_response({"message": "Fields Are Required"}, status=400)
+
+            exist_login = request.env['res.users'].sudo().search([('login', '=', vals.get('login'))])
+            if exist_login:
+                return invalid_response({"message": "already exist"}, status=400)
+
+            res = request.env['res.users'].sudo().create(vals)
+            return valid_response({"id": res.id,
+                                   "name": res.name,
+                                   "login": res.login}, status=200)
+
+        except Exception as error:
+            return request.make_json_response({"error": error}, status=400)
+            
+**>> Postman <<**
+[POST] http://127.0.0.1:8069/api/v1/CreateUser
+Body => raw (JSON)
+{
+    "name": "Property From api 1",
+    "postcode": "123456",
+    "garden_orientation": "north",
+    "bedrooms": 10
+}  
+________________________________________________________________________________________________
+55- APIs in Odoo: Part 3 (CRUD) 2. Update Operation.
+
+    @http.route("/v1/property/<int:property_id>", methods=["PUT"], type="http", auth="none", csrf=False, cors='*')
+    def update_property(self, property_id):
+        try:
+            property_id = request.env['property'].sudo().search([('id', '=', property_id)])
+            if not property_id:
+                return request.make_json_response({
+                    "error": "ID does not exist",
+                }, status=400)
+            args = request.httprequest.data.decode()
+            vals = json.loads(args)
+            property_id.write(vals)
+            return request.make_json_response({
+                "message": "Property has been updated successfully",
+                "id": property_id.id,
+                "name": property_id.name,
+                "garden_area": property_id.garden_area,
+            }, status=200)
+        except Exception as error:
+            return request.make_json_response({
+                "error": error,
+            }, status=400)
+
+**>> Postman <<**
+[PUT] http://127.0.0.1:8069/v1/property/30
+Body => raw (JSON)
+{
+    "garden_area": 333
+}
+______
+from odoo import http
+from odoo.http import request
+import base64
+# import imghdr
+from PIL import Image       #install by (pip install Pillow)
+import io
+
+class UserController(http.Controller):
+    @http.route('/api/v3/edit_user/<int:user_id>', type='http', auth='public', methods=['PUT'], csrf=False, cors='*')
+    def edit_user(self, user_id):
+        try:
+            args = {**request.httprequest.form, **request.httprequest.files}
+            user = request.env['res.users'].sudo().search([('id', '=', user_id)])
+            if not user:
+                return invalid_response({"error": "User not found"}, status=404)
+
+            if not args:
+                return invalid_response({"error": "There are Nothing to Change"}, status=404)
+
+            if args.get('login') and request.env['res.users'].sudo().search([('login', '=', args.get('login')), ('id', '!=', user_id)]):
+                return invalid_response({"error": "Login is already in use"}, status=400)
+
+            image_base64 = None
+            if args.get('image'):
+                image_base64 = base64.b64encode(args.get('image').read()).decode('utf-8')
+
+            groups_to_add = []
+            if args.get('groups'):
+                group_names = args.get('groups', '').split(',')
+                for group_name in group_names:
+                    try:
+                        group_ref = request.env.ref(group_name.strip())
+                        groups_to_add.append(group_ref.id)
+                    except Exception as error:
+                        return invalid_response({"error": f"Group '{group_name.strip()}' not found"}, status=400)
+
+            vals = {}
+            if args.get('name'): vals['name'] = args.get('name')
+            if args.get('login'): vals['login'] = args.get('login')
+            if args.get('password'): vals['password'] = args.get('password')
+            if image_base64: vals['image_1920'] = image_base64
+            # if args.get('groups'): vals['groups_id'] = [(6, 0, groups_to_add)]
+            if groups_to_add: vals['groups_id'] = [(4, group_id) for group_id in groups_to_add]
+
+            if vals:
+                user.write(vals)
+
+            return valid_response({"ID": user.id, "message": "User updated successfully"}, status=200)
+
+        except Exception as error:
+            return request.make_json_response({"error": error}, status=400)
+            
+**>> Postman <<**
+[PUT] http://127.0.0.1:8069/v1/property/30
+Body => form-data
+________________________________________________________________________________________________
+56-  Adding Translations to Your Custom App.
+Settings => Translations => Languages => Arabic / الْعَرَبيّة (Activate)
+Settings => Translations => Languages => Export Translation => نختار اسم المديول (مرة من غير لغه ومرة عربى )
+>>> i18n <<<	#../custom_addons/app_one/i18n
+app_one.pot
+ar_001.po
+#استخدم برنامج Poedit للمساعده على الترجمه 
+>>> property.py <<<
+    name = fields.Char(required=1, default='New', size=50, translate=True)
+________________________________________________________________________________________________
+57- APIs in Odoo: Part 4 (CRUD) 3. Read Operation.
+
+    @http.route("/v1/property/<int:property_id>", methods=["GET"], type="http", auth="none", csrf=False)
+
+    def get_property(self, property_id):
+        try:
+            property_id = request.env['property'].sudo().search([('id', '=', property_id)])
+            if not property_id:
+                return request.make_json_response("ID does not exist", status=400)
+            return request.make_json_response({
+                "id": property_id.id,
+                "name": property_id.name,
+                "ref": property_id.ref,
+                "description": property_id.description,
+                "bedrooms": property_id.bedrooms,
+            }, status=200)
+        except Exception as error:
+            return request.make_json_response({
+                "error": error,
+            }, status=400)
+
+**>> Postman <<**
+[GET] http://127.0.0.1:8069/v1/property/30
+_______
+    @http.route("/api/v1/GetUser/<int:user_id>", methods=["GET"], type="http", auth="user", csrf=False)
+    def get_res_user(self, user_id):
+        try:
+            user_id = request.env['res.users'].sudo().search([('id', '=', user_id)])
+            if not user_id:
+                return invalid_response({"message": "Invalid ID"}, status=400)
+            return valid_response({"id": user_id.id,
+                                   "name": user_id.name,
+                                   "login": user_id.login}, status=200)
+        except Exception as error:
+            return request.make_json_response({"error": error}, status=400)
+**>> Postman <<**
+[GET] http://127.0.0.1:8069/api/v1/GetUser/<int:user_id>
+________________________________________________________________________________________________
+58- APIs in Odoo: Part 5 (CRUD) 4. Delete Operation.
+
+    @http.route("/v1/property/<int:property_id>", methods=["DELETE"], type="http", auth="none", csrf=False)
+
+    def delete_property(self, property_id):
+        try:
+            property_id = request.env['property'].sudo().search([('id', '=', property_id)])
+            if not property_id:
+                return request.make_json_response({
+                    "error": "ID does not exist",
+                }, status=400)
+            property_id.unlink()
+            return request.make_json_response({
+                "message": "Property has been deleted successfully",
+            }, status=200)
+        except Exception as error:
+            return request.make_json_response({
+                "error": error,
+            }, status=400)
+
+**>> Postman <<**
+[DELETE] http://127.0.0.1:8069/v1/property/30
+__________
+    @http.route("/api/v1/DeleteMyUser", methods=["DELETE"], type="http", auth="user", csrf=False)
+    def delete_my_user(self):
+        try:
+            current_user = request.env.user
+            print(current_user)
+            request.env.cr.execute("DELETE FROM res_users WHERE id = %s", (current_user.id,))
+            request.env.cr.commit()
+            return request.make_json_response({
+                "success": "User Deleted Successfully",
+                "user_name": current_user.name}, status=200)
+
+        except Exception as error:
+            return request.make_json_response({
+                "error": error,
+            }, status=400)
+**>> Postman <<**
+[DELETE] http://localhost:8069/api/v1/DeleteMyUser
+________________________________________________________________________________________________
+59- APIs in Odoo: Part 6 (5. Get list of records with filtration.)
+
+    @http.route("/v1/properties", methods=["GET"], type="http", auth="none", csrf=False)
+
+    def get_property_list(self):
+        try:
+            params = parse_qs(request.httprequest.query_string.decode('utf-8'))
+            property_domain = []
+            page = offset = None
+            limit = 5
+            if params:
+                if params.get('limit'):
+                    limit = int(params.get('limit')[0])
+                if params.get('page'):
+                    page = int(params.get('page')[0])
+            if page:
+                offset = (page * limit) - limit
+            if params.get('state'):
+                property_domain += [('state', '=', params.get('state')[0])]
+            property_ids = request.env['property'].sudo().search(property_domain, offset=offset, limit=limit, order='id desc')
+            property_count = request.env['property'].sudo().search_count(property_domain)
+            if not property_ids:
+                return request.make_json_response({
+                    "error": "There are not records!",
+                }, status=400)
+            return request.make_json_response([{
+                "id": property_id.id,
+                "name": property_id.name,
+                "ref": property_id.ref,
+                "description": property_id.description,
+                "bedrooms": property_id.bedrooms,
+            }for property_id in property_ids], pagination_info={
+                'page': page if page else 1,
+                'limit': limit,
+                'pages': math.ceil(property_count / limit) if limit else 1,
+                'count': property_count,
+            }, status=200)
+        except Exception as error:
+            return request.make_json_response({
+                "error": error,
+            }, status=400)
+
+**>> Postman <<**
+[GET] http://127.0.0.1:8069/v1/properties
+key		value
+state		draft
+	#APIs in Odoo: Part 8 Pagination
+limit		2
+page		
+_______
+    @http.route("/api/v1/GetSaleOrders", methods=["GET"], type="http", auth="user", csrf=False)
+    def get_sale_orders(self):
+        try:
+            params = parse_qs(request.httprequest.query_string.decode('utf-8'))
+            property_domain = []
+            page = offset = None
+            limit = 5
+            if params:
+                if params.get('limit'):
+                    limit = int(params.get('limit')[0])
+                if params.get('page'):
+                    page = int(params.get('page')[0])
+            if page:
+                offset = (page * limit) - limit
+            if params.get('state'):
+                property_domain += [('state', '=', params.get('state')[0])]
+            sale_orders = request.env['sale.order'].sudo().search(property_domain, offset=offset, limit=limit, order='id desc')
+            sale_count_orders = request.env['sale.order'].sudo().search_count(property_domain,)
+            print(offset)
+            print(page)
+            print(limit)
+            print(sale_orders)
+            print(sale_count_orders)
+            if not sale_orders:
+                return invalid_response({"message": "There Are No Records"}, status=400)
+            return valid_response([{"ID": sale_order.id,
+                                    "Name": sale_order.name,
+                                    "State": sale_order.state,
+                                    "Customer": sale_order.partner_id.name} for sale_order in sale_orders],
+                                  pagination_info={
+                                      'page': page if page else 1,
+                                      'limit': limit,
+                                      'pages': math.ceil(sale_count_orders / limit) if limit else 1,
+                                      'count': sale_count_orders,
+                                  }, status=200)
+        except Exception as error:
+            return request.make_json_response({"error": error}, status=400)
+**>> Postman <<**
+[GET] http://localhost:8069/api/v1/GetSaleOrders?state=sale&limit=3&page=4
+key		value
+state		draft
+limit		3
+page		4
+
+________________________________________________________________________________________________
+60- APIs in Odoo: Part 7 Handling Response Structure.
+>>> property_api.py <<<
+
+def invalid_response(error, status):
+    response_body = {
+        'erroe': error
+    }
+    return request.make_json_response(response_body, status=status)
+
+
+def valid_response(data, status, pagination_info=None):
+    response_body = {
+        'message': "successful",
+        'data': data
+    }
+    if pagination_info:
+        response_body['pagination_info'] = pagination_info
+    return request.make_json_response(response_body, status=status)
+_______________________________________________________________________________________________
+    @http.route("/api/v1/GetSaleOrders", methods=["GET"], type="http", auth="user", csrf=False)
+    def get_sale_orders(self):
+        try:
+            params = parse_qs(request.httprequest.query_string.decode('utf-8'))
+            property_domain = []
+            page = offset = None
+            limit = 5
+            if params:
+                if params.get('limit'):
+                    limit = int(params.get('limit')[0])
+                if params.get('page'):
+                    page = int(params.get('page')[0])
+            if page:
+                offset = (page * limit) - limit
+            if params.get('state'):
+                property_domain += [('state', '=', params.get('state')[0])]
+            sale_orders = request.env['sale.order'].sudo().search(property_domain, offset=offset, limit=limit, order='id desc')
+            sale_count_orders = request.env['sale.order'].sudo().search_count(property_domain,)
+            print(offset)
+            print(page)
+            print(limit)
+            print(sale_orders)
+            print(sale_count_orders)
+            if not sale_orders:
+                return invalid_response({"message": "There Are No Records"}, status=400)
+            return valid_response([{"ID": sale_order.id,
+                                    "Name": sale_order.name,
+                                    "State": sale_order.state,
+                                    "Customer": sale_order.partner_id.name} for sale_order in sale_orders],
+                                  pagination_info={
+                                      'page': page if page else 1,
+                                      'limit': limit,
+                                      'pages': math.ceil(sale_count_orders / limit) if limit else 1,
+                                      'count': sale_count_orders,
+                                  }, status=200)
+        except Exception as error:
+            return request.make_json_response({"error": error}, status=400)
+________________________________________________________________________________________________
+61- APIs in Odoo: Part 9 Integrate with another app.
+pip install requests
+>>> property.py <<<
+import requests
+
+    def get_properties(self):
+        payload = dict()
+        try:
+            response = requests.get('http://127.0.0.1:8069/v1/properties', data=payload)
+            if response.status_code == 200:
+                print("successful")
+            else:
+                print("fail")
+        except Exception as error:
+            raise ValidationError(str(error))
+        # print(response.content)
+        print(response.status_code)
+>>> property_views.xml <<<
+    <button name="get_properties" type="object" class="btn-primary" string="Test Call GET properties"/>
+    ________________________________________________________________________________________________
+    				____************authenticate************____
+
+   {{URL}}/web/session/authenticate
+
+{
+    "params": {
+        "db": "liqaa",
+        "login": "admin",
+        "password": "admin"
+    }
+}
+_______________________________________
+    				____************Photo************____
+data = request.env['res.users'].sudo().search_read(
+    [('id', '=', user_id.id)],
+    fields=['id', 'name', 'login', 'show_password', 'image_1920'])
+    _______________________________________
+    				____************DELETE FROM************____
+    				
+request.env.cr.execute("DELETE FROM res_users WHERE id = %s", (current_user_id,))
+request.env.cr.commit()
+___________
+    @http.route("/api/v1/DeleteMyUser", methods=["DELETE"], type="http", auth="user", csrf=False)
+    def delete_my_user(self):
+        try:
+            current_user = request.env.user
+            print(current_user)
+            request.env.cr.execute("DELETE FROM res_users WHERE id = %s", (current_user.id,))
+            request.env.cr.commit()
+            return request.make_json_response({
+                "success": "User Deleted Successfully",
+                "user_name": current_user.name}, status=200)
+
+        except Exception as error:
+            return request.make_json_response({
+                "error": error,
+            }, status=400)
+    _______________________________________
+    				____************Give res.users groups_id************____ # 6=> remove all other  ,   4 to select
+val = {
+    'name': vals.get('name'),
+    'login': vals.get('login'),
+    'password': vals.get('password'),
+    'groups_id': [(6, 0, [request.env.ref('base.group_portal').id])]
+}
+_____
+res.write({
+    'groups_id': [
+        (4, request.env.ref('project.group_project_manager').id),
+        (4, request.env.ref('project_permission.group_owner').id)
+    ]
+})
+    _______________________________________
+    				____************get data from form_data************____
+# to get data from form_data in post man 
+image_file = request.httprequest.files.get('image')
+password = request.httprequest.form.get('password')
+    _______________________________________
+    				____************get data from param************____
+# get data from param
+@http.route(['/api/v1/testParam'], type='http', auth='public', cors='*', method=['GET'], sitemap=False,csrf=False)
+def test(self):
+    params = parse_qs(request.httprequest.query_string.decode('utf-8'))
+    email = params.get('login')[0]
+    password = params.get('password')[0]
+    print(email)
+    print(password)
+    ________________________________________________________________________________________________
+args = request.httprequest.data.decode()   	=> josn
+            vals = json.loads(args)
+vals.get('name')
+_____
+   vals = request.httprequest.form		=> form-data or x-www-form-urlencoded
+vals.get('name')
+
+args1 = request.httprequest.form
+args2 = request.httprequest.files
+vals = {**dict(args1), **dict(args2)}
+_
+args = {**request.httprequest.form, **request.httprequest.files}
+____
+
+
+________________________________________________________________________________________________
+	
+#اختصار للاسم Short Code	3=> عدد الاحرف
+ if rec.name:
+                rec.short_code = str(rec.name[0:3]).upper()
+_________________
+
+  مع بعض واكتر من اسم  field اضافه اكتر من 
+            if plan_id.short_code and rec.reference_code:
+                rec.name = plan_id.short_code + '/' + rec.reference_code + '-' + rec.partner_id.name
+______________________________________________________
+product_template_views.xml
+<button string="Print Labels" type="object" name="action_open_label_layout"/>
+
+product_label_layout_views.xml
+<record id="action_open_label_layout" model="ir.actions.act_window">
+        <field name="name">Choose Labels Layout</field>
+        <field name="res_model">product.label.layout</field>
+        <field name="view_ids"
+                eval="[(5, 0, 0),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('product_label_layout_form')})]" />
+        <field name="target">new</field>
+    </record>
+
+product_product.py
+    def action_open_label_layout(self):
+        action = self.env['ir.actions.act_window']._for_xml_id('product.action_open_label_layout')
+        action['context'] = {'default_product_ids': self.ids}
+        return action
+___________________________________________________________________________________-
+/home/asd/odoo/odoo17/odoo/custom_addons_r/app_one/reports/property_xlsx_report.py
+>>> property_xlsx_report.py <<<
+
+import io
+from ast import literal_eval
+import xlsxwriter
+from odoo import http
+from odoo.http import request
+
+
+class property_xlsx_report(http.Controller):
+    @http.route('/property/excel/report/<string:property_ids>', type='http', auth='user')
+    def download_property_excel_report(self, property_ids):
+        property_ids = request.env['property'].browse(literal_eval(property_ids))
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Properties')
+
+        header_format = workbook.add_format({'bold': True, 'bg_color': '#D3D3D3', 'border': 1, 'align': 'center'})
+        string_format = workbook.add_format({'border': 1, 'align': 'center'})
+        price_format = workbook.add_format({'num_format': '$##,###00.00', 'border': 1, 'align': 'center'})
+
+        headers = ['Name', 'Postcode', 'Selling Price', 'Garden']
+        for col_num, header in enumerate(headers):
+            worksheet.write(0, col_num, header, header_format)
+
+        row_num = 1
+        for property in property_ids:
+            worksheet.write(1, 0, property.name, string_format)
+            worksheet.write(1, 1, property.postcode, string_format)
+            worksheet.write(1, 2, property.selling_Price, price_format)
+            worksheet.write(1, 3, 'Yes' if property.garden else 'No')
+            row_num += 1
+
+        workbook.close()
+        output.seek(0)
+        file_name = 'Property Report.xlsx'
+        return request.make_response(
+            output.getvalue(),
+            headers=[
+                ('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+                ('Content-Disposition', f'attachment; filename={file_name}')
+            ]
+        )
+
+>>> __init__.py <<<
+# -*- coding: utf-8 -*-
+
+from . import property_xlsx_report
+
+>>> property.py <<<
+    def property_xlsx_report(self):
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/property/excel/report/{self.env.context.get("active_ids")}',
+            'target': 'new'
+        }
+___________________________________________________________________________________
+OWL
+
+>>> views/sale_menus.xml <<<
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="list_view_action" model="ir.actions.client">
+        <field name="name">List View</field>
+        <field name="tag">app_one.action_list_view</field>
+    </record>
+
+    <menuitem id="list_view_menu_item"
+              action="list_view_action"
+              parent="sale.sale_order_menu"
+              sequence="100"/>
+</odoo>
+_____________________________________________________________________________
+>>> static/src/components/listView/listView.js <<<
+/* @odoo-module */
+
+import { Component } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+
+export class ListViewAction extends Component {
+    static template = "app_one.ListView";
+};
+
+registry.category("actions").add("app_one.action_list_view", ListViewAction);
+_____________________________________________________________________________
+>>> static/src/components/listView/listView.xml <<<
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="app_one.ListView">
+        <h1>Hello World!</h1>
+    </t>
+</templates>
+_____________________________________________________________________________
+>>> __manifest__.py <<<
+# -*- coding: utf-8 -*-
+{
+    "name" : "App One OWL 17",
+    "version" : "17.0.0.0",
+    "depends" : ['base', 'sale_management'],
+    "data": [
+            'views/sale_menus.xml'
+            ],
+    'assets': {
+        'web.assets_backend': [
+            'app_one/static/src/components/listView/listView.xml',
+            'app_one/static/src/components/listView/listView.js',
+        ],
+    },
+}
+__________________________________________________________________________________________________________________________________________________________
+>>> static/src/components/listView/listView.js <<<
+				****Using ORM****
+/* @odoo-module */
+
+import { Component, useState } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
+
+export class ListViewAction extends Component {
+    static template = "app_one.ListView";
+
+    setup() {		//لتعريف الاشياء المستخدمه 
+        this.state = useState({		//useState تحديث الواجه فى كل مرة يحدث تغيير
+            'records': []
+        });
+        this.orm = useService("orm")	//ormتعريف الـ
+        this.loadRecords();
+    };
+
+    async loadRecords() {		//await تستخدم عند عمل عمليه تستغرق وقت ويجب ان تتبع بـ async
+        const result = await this.orm.searchRead("sale.order", [], []);	//تقوم بقرائه البيانات ormهى داله موجوده داخل الـ searchRead
+        this.state.records = result;
+    };
+};
+
+registry.category("actions").add("app_one.action_list_view", ListViewAction);
+		_____________________________________________________________________________
+				****OR Using RPC****
+/* @odoo-module */
+
+import { Component, useState } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
+
+export class ListViewAction extends Component {
+    static template = "app_one.ListView";
+
+    setup() {
+        this.state = useState({
+            'records': []
+        });
+        this.orm = useService("orm");
+        this.rpc = useService("rpc");
+        this.loadRecords();
+    };
+
+//    async loadRecords() {
+//        const result = await this.orm.searchRead("sale.order", [], []);
+//        this.state.records = result;
+//    };
+
+    async loadRecords() {
+        const result = await this.rpc("/web/dataset/call_kw", {
+            model: "sale.order",
+            method: "search_read",
+            args: [[]],
+            kwargs: { fields: ['id', 'name', 'date_order', 'partner_id']},
+        });
+        console.log('result===>', result)
+        this.state.records = result;
+    };
+};
+registry.category("actions").add("app_one.action_list_view", ListViewAction);
+_____________________________________________________________________________
+>>> static/src/components/listView/listView.xml <<<
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="app_one.ListView">
+        <h1>Hello World!</h1>
+        <div class="o_content">
+        <div class="o_list_renderer o_renderer table-responsive o_list_renderer_1">
+            <table class="o_list_table table table-sm table-hover table-striped">
+                <thead class="o_list_renderer o_list_table thead ">
+                    <tr>
+                        <th class="o_list_column_header">Number</th>
+                        <th class="o_list_column_header">Order Date</th>
+                        <th class="o_list_column_header">Customer</th>
+                    </tr>
+                </thead>
+                <tbody class="ui-sortable">
+                    <t t-foreach="state.records" t-as="record" t-key="record.id">	//loopلعمل t-foreach //id لعمل تمميز بشئ معين مثلا t-key 
+                        <tr>
+                            <td><t t-esc="record.name"/></td>
+                            <td><t t-esc="record.date_order"/></td>
+                            <td><t t-esc="record.partner_id"/></td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+        </div>
+        </div>
+    </t>
+</templates>
+__________________________________________________________________________________________________________________________________________________________
+OWL: 5. Update State (Part 2). onWillUnmount() Hook.
+>>> static/src/components/listView/listView.js <<<
+/* @odoo-module */
+
+import { Component, useState, onWillUnmount } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
+
+export class ListViewAction extends Component {
+    static template = "app_one.ListView";
+
+    setup() {
+        this.state = useState({
+            'records': []
+        });
+        this.orm = useService("orm");
+        this.rpc = useService("rpc");
+        this.loadRecords();
+
+//        setInterval(() => {console.log("test setInterval method")},3000);
+        this.intervalId = setInterval(() => {this.loadRecords()},3000);
+        onWillUnmount(() => {clearInterval(this.intervalId)})
+    };
+
+//    async loadRecords() {
+//        const result = await this.orm.searchRead("sale.order", [], []);
+//        this.state.records = result;
+//    };
+
+    async loadRecords() {
+        const result = await this.rpc("/web/dataset/call_kw", {
+            model: "sale.order",
+            method: "search_read",
+            args: [[]],
+            kwargs: { fields: ['id', 'name', 'date_order', 'partner_id']},
+        });
+        console.log('result===>', result)
+        this.state.records = result;
+    };
+};
+
+registry.category("actions").add("app_one.action_list_view", ListViewAction);
+__________________________________________________________________________________________________________________________________________________________
+OWL: 6. Creating and Deleting Records in OWL Components
+>>> static/src/components/listView/listView.js <<<
+/* @odoo-module */
+
+import { Component, useState, onWillUnmount } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
+
+export class ListViewAction extends Component {
+    static template = "app_one.ListView";
+
+    setup() {
+        this.state = useState({
+            'records': []
+        });
+        this.orm = useService("orm");
+        this.rpc = useService("rpc");
+        this.loadRecords();
+
+//        setInterval(() => {console.log("test setInterval method")},3000);
+        this.intervalId = setInterval(() => {this.loadRecords()},3000);
+        onWillUnmount(() => {clearInterval(this.intervalId)})
+    };
+
+//    async loadRecords() {
+//        const result = await this.orm.searchRead("sale.order", [], []);
+//        this.state.records = result;
+//    };
+
+    async loadRecords() {
+        const result = await this.rpc("/web/dataset/call_kw", {
+            model: "sale.order",
+            method: "search_read",
+            args: [[]],
+            kwargs: { fields: ['id', 'name', 'date_order', 'partner_id']},
+        });
+        console.log('result===>', result)
+        this.state.records = result;
+    };
+    async createRecord() {
+        await this.rpc("/web/dataset/call_kw", {
+            model: "sale.order",
+            method: "create",
+            args: [{
+                partner_id: 10,
+            }],
+            kwargs: {},
+        })
+        this.loadRecords()
+    };
+    async deleteRecord(recordId) {
+        await this.rpc("/web/dataset/call_kw", {
+            model: "sale.order",
+            method: "unlink",
+            args: [recordId],
+            kwargs: {},
+        })
+        this.loadRecords()
+    };
+
+};
+
+registry.category("actions").add("app_one.action_list_view", ListViewAction);
+_____________________________________________________________________________
+>>> static/src/components/listView/listView.xml <<<
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="app_one.ListView">
+        <h1>Sales List!</h1>
+        <button class="btn btn-primary m-1 p-1" t-on-click="createRecord">Create Record</button>
+        <div class="o_content">
+        <div class="o_list_renderer o_renderer table-responsive o_list_renderer_1">
+            <table class="o_list_table table table-sm table-hover table-striped">
+                <thead class="o_list_renderer o_list_table thead ">
+                    <tr>
+                        <th class="o_list_column_header">Number</th>
+                        <th class="o_list_column_header">Order Date</th>
+                        <th class="o_list_column_header">Customer</th>
+                        <th class="o_list_column_header">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="ui-sortable">
+                    <t t-foreach="state.records" t-as="record" t-key="record.id">
+                        <tr>
+                            <td><t t-esc="record.name"/></td>
+                            <td><t t-esc="record.date_order"/></td>
+                            <td><t t-esc="record.partner_id"/></td>
+                            <td><button class="btn btn-danger" t-on-click="deleteRecord.bind(this, record.id)">Delete</button></td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+        </div>
+        </div>
+    </t>
+</templates>
+__________________________________________________________________________________________________________________________________________________________
+Odoo16, Odoo15, attrs, '&amp;', And
+<field name="reason" attrs="{'invisible': ['|', '&amp;', ('picking_type_code', '!=', 'outgoing'), ('picking_type_code', '!=', 'outgoing'), ('quality', '!=', False)], 'required': ['&amp;',('quality', '=', False), ('picking_type_code', '=', 'outgoing')]}"/>
+__________________________________________________________________________________________________________________________________________________________
+			***Append***
+from odoo import models, fields, _
+from odoo.exceptions import ValidationError
+
+
+class AccountMove(models.Model):
+    _inherit = 'account.move'
+
+
+    def action_post(self):
+        res = super(AccountMove, self).action_post()
+        print("inside action_post method")
+        if self.ref:
+            existing_bills = self.search([('ref', '=', self.ref),('id', '!=', self.id)])
+            messeage = []
+            if existing_bills:
+                for bill in existing_bills:
+                    messeage.append(bill.name)
+                raise ValidationError(_(f"There is already an invoice: {messeage} with the same reference: {self.ref}"))
+        return res
+__________________________________________________________________________________________________________________________________________________________
+post_init_hook
+>>> __manifest__.py <<<
+# -*- coding: utf-8 -*-
+{
+    'name': "custom_analytical_allocation",
+
+    'summary': """
+        Short (1 phrase/line) summary of the module's purpose, used as
+        subtitle on modules listing or apps.openerp.com""",
+
+    'description': """
+        Long description of module's purpose
+    """,
+
+    'author': "ahmed diap",
+    'website': "https://www.yourcompany.com",
+    'category': 'Uncategorized',
+    'version': '0.1',
+    'depends': ['base','account'],
+
+    'data': [
+        # 'security/ir.model.access.csv',
+        'views/account_move.xml',
+    ],
+    'post_init_hook': 'post_init_hook_function',
+}
+-----------
+>>> hooks.py <<<
+from odoo import api, SUPERUSER_ID
+
+def post_init_hook_function(cr, registry):
+    env = api.Environment(cr, SUPERUSER_ID, {})
+    vendor_bills = env['account.move'].search([('move_type', '=', 'in_invoice'), ('has_reconciled_entries', '=', False)])
+    for bill in vendor_bills:
+        print(f"{bill},reconciled: {bill.has_reconciled_entries}")
+        if not bill.has_reconciled_entries:
+            bill.split_payable_line()
+-----------
+>>> __init__.py <<<
+# -*- coding: utf-8 -*-
+
+from . import models
+from .hooks import post_init_hook_function
+__________________________________________________________________________________________________________________________________________________________
+
+
+# -*- coding: utf-8 -*-
+from odoo import models, fields, api
+
+class MrpProduction(models.Model):
+    _inherit = 'mrp.production'
+
+    sale_order_id = fields.Many2one('sale.order', string="Sales Order", compute="_compute_sale_order_id", store=True)
+
+    @api.depends('origin')
+    def _compute_sale_order_id(self):
+        for record in self:
+            if record.origin:
+                order = self.env['sale.order'].search([('name', '=', record.origin)], limit=1)
+                record.sale_order_id = order.id if order else False
+            else:
+                record.sale_order_id = False
+
+    @api.model
+    def create(self, vals):
+        if vals.get('sale_order_id'):
+            order = self.env['sale.order'].browse(vals['sale_order_id'])
+            if order:
+                vals.setdefault('origin', order.name)
+                vals.setdefault('procurement_group_id', order.procurement_group_id.id)
+        return super().create(vals)
+
+    def write(self, vals):
+        if vals.get('sale_order_id'):
+            order = self.env['sale.order'].browse(vals['sale_order_id'])
+            if order:
+                vals.setdefault('origin', order.name)
+                vals.setdefault('procurement_group_id', order.procurement_group_id.id)
+        return super().write(vals)
+
+__________________________________________________________________________________________________________________________________________________________
+
+
+
+
