@@ -1,3 +1,5 @@
+https://apps.odoo.com/apps/modules/category/Point%20of%20Sale/browse?price=Free&series=17.0&search=test
+_________________________________________________________________________________________________
 http://localhost:8016/web/database/selector
 _________________________________________________________________________________________________
 kill -9 $(ps -A | grep python | awk '{print $1}')
@@ -119,6 +121,7 @@ class Property(models.Model):
     
     name = fields.Char(required=1, default='New', size=10, copy=Falsef)
     sequence = fields.Integer(default=10)	# drag and drop 
+#<field name="sequence" widget="handle"/> Manyاللى جوا الفيلد الtreeدا يتضاف جوا ال
     description = fields.Text()
     postcode = fields.Char(required=1)		#<field name="postcode" required="1"/> 
     date_availability = fields.Date()
@@ -1145,6 +1148,8 @@ Second: %(sec)s
         if res.ref == 'New':
             res.ref = self.env['ir.sequence'].next_by_code('property_seq')
         return res
+or  API => 
+record_vals['seq'] = request.env['ir.sequence'].sudo().next_by_code('op.admission.seq')
 or
     @api.model_create_multi
     def create(self, values):
@@ -2932,7 +2937,222 @@ class MrpProduction(models.Model):
         return super().write(vals)
 
 __________________________________________________________________________________________________________________________________________________________
+warning رساله تحذير
+                if line.partner_id.id in seen_partners:
+                    return {
+                        'warning': {
+                            'title': "تنبيه",
+                            'message': f"لا يمكن تكرار نفس المالك: {line.partner_id.name}",
+                        }
+                    }
+__________________________________________________________________________________________________________________________________________________________
+
+plot_area_m2 = fields.Float("مساحة القطعة (م²)")  # بدون compute
+
+@api.onchange('plot_length', 'plot_width')
+def _onchange_plot_area_m2(self):
+    for rec in self:
+        rec.plot_area_m2 = rec.plot_length * rec.plot_width if rec.plot_length and rec.plot_width else 0.0
+
+@api.model
+def create(self, vals):
+    # احتساب المساحة عند الإنشاء
+    length = vals.get('plot_length', 0.0)
+    width = vals.get('plot_width', 0.0)
+    vals['plot_area_m2'] = length * width if length and width else 0.0
+    return super().create(vals)
+
+def write(self, vals):
+    for rec in self:
+        length = vals.get('plot_length', rec.plot_length)
+        width = vals.get('plot_width', rec.plot_width)
+        vals['plot_area_m2'] = length * width if length and width else 0.0
+    return super().write(vals)
+
+__________________________________________________________________________________________________________________________________________________________
+	_____Contex______
+EX: =>  with_context(is_printing=True)
+	with_context(skip_mail_sending=True)
+	with_context(my_custom_flag='xyz')
+
+أضفنا مفتاح جديد داخل الـ context اسمه force_picking_draft_state.
+self = self.with_context(force_picking_draft_state=True)
+ثم نلتقط هذا المفتاح داخل _compute_state:
+if self.env.context.get('force_picking_draft_state'):
+    picking.state = 'draft'
+✅ في Python:
+ # 1. تمرير context مخصص
+self = self.with_context(my_flag=True)
+
+# 2. التقاطه لاحقًا
+if self.env.context.get('my_flag'):
+    do_something()
+✅ في XML action أو button:
+<button name="my_method"
+        type="object"
+        context="{'custom_flag': True}" />
+
+🔁 كيف ينتشر الـ context؟
+new_record = self.env['model.name'].with_context(x=True).create(vals)
+
+self.env.
+المستخدم الحالي (user)
+الوقت (tz)
+اللغة (lang)
+self = self.with_context(lang='ar_EG')
+🗣️ مثال عملي 1: الترجمة التلقائية للحقول
+partner = self.env['res.partner'].browse(1).with_context(lang='ar_EG')
+print(partner.name)
+إذا كان هناك ترجمة لاسم الشريك للعربية، ستظهر هنا.
+وإلا فستظهر القيمة الأصلية (الافتراضية بالإنجليزية).
+
+🧾 مثال عملي 2: طباعة تقارير باللغة العربية
+report = self.env.ref('sale.action_report_saleorder')
+return report.with_context(lang='ar_EG').report_action(self)
+هذا يُجبر التقرير أن يُطبع بالعربية بدل الإنجليزية.
+
+🧪 مثال عملي 3: تغيير اللغة أثناء create()
+vals = {'name': 'مرحبا'}
+record = self.env['my.model'].with_context(lang='en_US').create(vals)
+هنا، حتى لو المستخدم يستخدم واجهة عربية، سيُسجّل الاسم باللغة الإنجليزية.
+self = self.with_context(lang='ar_EG', tz='Africa/Cairo', show_prices=True)
+| المفتاح                    | وظيفته                                  |
+| -------------------------- | --------------------------------------- |
+| `lang`                     | تحديد اللغة المستخدمة                   |
+| `tz`                       | تحديد المنطقة الزمنية                   |
+| `active_id` / `active_ids` | تُستخدم في النوافذ المنبثقة / الإجراءات |
+| `default_...`              | تعيين قيمة افتراضية في النماذج          |
+| `mail_notify_force_send`   | إجبار إرسال الإشعارات                   |
+
+python=>
+<button name="my_method"
+        type="object"
+        context="{'custom_flag': True}" />
+xml=>
+def my_method(self):
+    if self.env.context.get('custom_flag'):
+        # منطق خاص عند الضغط على الزر
+        do_something_special()
+    else:
+        # المنطق العادي
+        do_normal_thing()
+| الاستخدام                       | الشكل في الزر                                            | التأثير                                           |
+| ------------------------------- | -------------------------------------------------------- | ------------------------------------------------- |
+| تغيير اللغة                     | `context="{'lang': 'ar_EG'}"`                            | تشغيل العملية بلغة معينة (مثلاً تقارير أو رسائل). |
+| تمرير متغيرات للدالة            | `context="{'from_button': True}"`                        | الدالة تعرف أنها نُفذت من الزر وليس من مكان آخر.  |
+| تحديد default value لنموذج جديد | `context="{'default_partner_id': partner_id}"`           | عند فتح نافذة جديدة يتم ملء الحقل تلقائيًا.       |
+| تخصيص عرض النموذج               | `context="{'form_view_ref': 'module.custom_form_view'}"` | فتح نموذج معين بدل الافتراضي.                     |
+| تفعيل خيارات معينة              | `context="{'skip_checks': True}"`                        | تخطي تحقق معين داخل الدالة.                       |
 
 
+🧪 مثال عملي:
+XML:
 
+<button name="action_generate_report"
+        type="object"
+        context="{'lang': 'ar_EG', 'print_draft': True}" />
+Python:
+
+def action_generate_report(self):
+    if self.env.context.get('print_draft'):
+        # اطبع نسخة مسودة بالعربية
+        self.print_draft_version()
+    else:
+        self.print_final_version()
+        
+context="{'lang': 'ar_EG', 'default_product_id': product_id, 'custom_mode': 'quick'}"
+
+✅ 1. في نموذج العميل (partner form):
+xml
+
+<button name="open_product_form"
+        type="object"
+        string="إضافة منتج لهذا العميل"
+        context="{'default_preferred_customer_id': active_id}" />
+💡 default_ + اسم الحقل = قيمة افتراضية يتم تعبئتها عند إنشاء سجل جديد
+و active_id هو ID السجل الحالي (أي العميل).
+
+✅ 2. في الكود بايثون (model res.partner):
+python
+
+class ResPartner(models.Model):
+    _inherit = 'res.partner'
+
+    def open_product_form(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'منتج جديد',
+            'res_model': 'product.template',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': self.env.context,  # يحتوي على default_preferred_customer_id
+        }
+✅ 3. في موديل المنتج (product.template)، نضيف الحقل preferred_customer_id:
+python
+
+class ProductTemplate(models.Model):
+    _inherit = 'product.template'
+
+    preferred_customer_id = fields.Many2one('res.partner', string='العميل المفضل')
+
+| الهدف                     | الـ `context` المستخدم                             |
+| ------------------------- | -------------------------------------------------- |
+| تعبئة اسم الشريك تلقائيًا | `'default_partner_id': active_id`                  |
+| تعبئة العملة تلقائيًا     | `'default_currency_id': currency_id`               |
+| فتح نموذج معين            | `'form_view_ref': 'my_module.custom_form_view_id'` |
+| وضع الزر في وضع خاص       | `'custom_flag': True`                              |
+
+context="{
+    'default_preferred_customer_id': active_id,
+    'default_list_price': 99.0,
+    'default_categ_id': 3
+}"
+
+
+__________________________________________________________________________________________________________________________________________________________
+
+NATIONALITY_MAP = {1: 192, 2: 2, 3: 23, 4: 171}
+vals['nationality'] = NATIONALITY_MAP[arabic_nationality_id]
+__________________________________________________________________________________________________________________________________________________________
+malti invisible اخفاء اكثر من شرط
+	<xpath expr="//button[@id='create_invoice']" position="attributes">
+        	<attribute name="invisible">(state not in ['draft', 'measurement']) or (invoice_count &gt; 0)</attribute>
+        </xpath>
+__________________________________________________________________________________________________________________________________________________________
+//lambda
+related_extras = self.filtered(lambda e: e.sheet_line_id == sheet_line)
+if not order.order_line.filtered(lambda l: l.display_type == 'line_section'):
+unpaid_invoices = order.invoice_ids.filtered(lambda inv: inv.state not in ['paid', 'cancel'] and inv.amount_residual > 0)
+related_order_line = self.order_line.filtered(lambda l: l.product_id == production.product_id)
+related_addition_lines = sheet.addition_line_ids.filtered(lambda a: a.quantities > 0)
+                for measure in measurement_lines:
+exists = sheet.extra_line_ids.filtered(lambda e: e.sheet_line_id == m_line and e.product_tmpl_id == measure.related_product_tmpl_id)
+sheet.extra_line_ids.filtered(lambda e: e.sheet_line_id == m_line).unlink()
+exists = sheet.actual_line_ids.filtered(lambda a: a.sheet_line_id == m_line
+lines_to_purchase = sheet.addition_line_ids.filtered(lambda l: l.purchase_needed and l.quantities > 0)
+//mapped
+door_templates = self.env['product.template.measurement.line'].search([('measurement_type', '=', 'door')
+            ]).mapped('parent_product_tmpl_id.id')
+
+            door_sheet_lines = line.sheet_id.line_ids.filtered(lambda l: l.product_id and l.product_id.product_tmpl_id.id in door_templates).sorted(lambda l: l.id))
+related_extras = self.filtered(lambda e: e.sheet_line_id == sheet_line)
+__________________________________________________________________________________________________________________________________________________________
+    <div class="pos-receipt-order-data">
+        <p>Powered by Odoo</p>
+        <div t-esc="props.data.name" />
+        <div id="order-date" t-esc="props.data.date" />
+    </div>
+__________________________________________________________________________________________________________________________________________________________
+
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="custom_title" inherit_id="point_of_sale.index">
+        <xpath expr="//head/title" position="replace">
+            <title>Areez POS</title>
+        </xpath>
+    </template>
+
+</odoo>
+__________________________________________________________________________________________________________________________________________________________
 
