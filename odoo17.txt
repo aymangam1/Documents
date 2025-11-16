@@ -88,6 +88,16 @@ create_date        |psql -d test #test=database_name
 write_uid          |\d model.a; #model.a=table_name
 write_date         |
 name      	   |
+
+
+_________________________________________________________________________________________________
+options="{'no_quick_create': True, 'no_create_edit': True, 'no_open': True}"
+options="{'no_create': True}"
+<field name="payment_state" widget="selection_badge" options="{
+    'no_payment': 'danger',
+    'partial_payment': 'warning', 
+    'full_payment': 'success'
+}"/>
 _________________________________________________________________________________________________
 6- Automatic Fields in Odoo.​
 
