@@ -3353,3 +3353,19 @@ ___________________________________
     </template>
 </odoo>
 __________________________________________________________________________________________________________________________________________________________
+
+<!-- ======= Header with Logos ======= -->
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+                <img t-att-src="'/custom_sale_view/static/src/img/logo1.png'" style="width:200px; padding-top: 0px; margin-top: 0px;" align="right"/>
+                <img t-att-src="'/custom_sale_view/static/src/img/logo2.png'" style="width:140px; padding-top: 0px; margin-top:-15px;" align="left"/>
+            </div>
+            <h4 style="color: red; padding-top: 0px; margin-top:-15px; text-align:center; font-weight:bold; margin-top:20px;">سند استلام مركبه وأمر عمل</h4>
+            
+__________________________________________________________________________________________________________________________________________________________
+@api.model
+    def create(self, vals):
+        if vals.get('name', '/') == '/':
+            vals['name'] = self.env['ir.sequence'].next_by_code('guarantee.sequence') or '/'
+        return super(Guarantee, self).create(vals)
+__________________________________________________________________________________________________________________________________________________________
+
