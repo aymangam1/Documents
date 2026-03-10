@@ -1,3 +1,5 @@
+postman --disable-gpu --disable-software-rasterizer
+______________________________________________________
 https://apps.odoo.com/apps/modules/category/Point%20of%20Sale/browse?price=Free&series=17.0&search=test
 _________________________________________________________________________________________________
 http://localhost:8016/web/database/selector
@@ -17,6 +19,7 @@ ________________________________________________________________________________
 2- custom_addons
 ./odoo-bin scaffold app_one /home/ayman/odoo/odoo/odoo/custom_addons 
 _________________________________________________________________________________________________
+./odoo-bin -c odoo.conf
  ./odoo-bin --addons-path=".../addons,.../custom_addons" -d ayman -u app_one --dev xml
  ./odoo-bin shell -d ayman
  env['ir.module.module'].search([('name', '=', 'app_one')]).button_immediate_uninstall()
@@ -871,7 +874,17 @@ ________________________________________________________________________________
               <field name="numbercall">-1</field>	#المده (-1 تعنى دائم)
               <field name="active">True</field>		#يعمل
             </record>   
+<field name='interval_number'>1</field>
+<field name='interval_type'>days</field>
 
+<field name='interval_number'>1</field>
+<field name='interval_type'>hours</field>
+
+<field name='interval_number'>10</field>
+<field name='interval_type'>minutes</field>
+
+<field name='interval_number'>1</field>
+<field name='interval_type'>weeks</field>
 				or
 
 #إذا كانت تحتاج إلى التكرار على السجلات
@@ -1036,6 +1049,7 @@ subscription_label_report.xml
             <field name="page_height">0</field>
             <field name="page_width">0</field>
             <field name="orientation">Portrait</field>
+       <!--<field name="orientation">Landscape</field>-->
             <field name="margin_top">0</field>
             <field name="margin_bottom">0</field>
             <field name="margin_left">0</field>
@@ -1700,6 +1714,14 @@ access_patient_tag_doctor,patient_tag_doctor,model_patient_tag,om_hospital.group
             <field name="implied_ids" eval="[(4, ref('om_hospital.group_hospital_receptionist'))]"/> <!-- عشان يبقى booleanعلى شكل ليست مش -->
             <field name="comment">this user will have access to Patient details.</field>
         </record>
+
+<record id="group_hr_manager" model="res.groups">
+	<field name="name">Administrator</field>
+	<field name="comment">The user will have access to the human resources configuration as well as statistic reports.</field>
+	<field name="category_id" ref="base.module_category_human_resources_employees"/>
+	<field name="implied_ids" eval="[(4, ref('group_hr_user'))]"/>
+	<field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+</record>
 
         <record id="receptionist_own_appointment_rule" model="ir.rule">
             <field name="name">Receptionest: view own records</field>
@@ -3368,4 +3390,136 @@ ________________________________________________________________________________
             vals['name'] = self.env['ir.sequence'].next_by_code('guarantee.sequence') or '/'
         return super(Guarantee, self).create(vals)
 __________________________________________________________________________________________________________________________________________________________
+style="direction:ltr; unicode-bidi:embed;"  <====== 
+unicode-bidi: embed → يجبر المتصفح أن يتعامل مع الرقم كوحدة مستقلة ويمنع عكسه
 
+<xpath expr="//div[hasclass('page')]//h2" position="after">
+            <div class="row" style="direction: rtl; margin-bottom: 20px;">
+                <div>
+                    <p><strong>الجوال"</strong>
+                        <span t-if="docs.partner_id.phone" style="direction:ltr; unicode-bidi:embed;" t-field="docs.partner_id.phone"/>
+                        <span t-else="">-</span>
+                    </p>
+                    __________________________________________________________________________________________________________________________________________________________
+contains  ,   hasclass
+
+ <xpath expr="//div[contains(@class, 'col-6 text-end mb4')]" position="replace">
+<xpath expr="//div[hasclass('col-6 text-end mb4')]" position="replace">
+__________________________________________________________________________________________________________________________________________________________
+- تحويل المبلغ الى نص كتابه
+ amount_in_words_ar = fields.Char(
+        string="المبلغ كتابة",
+        compute="_compute_amount_in_words_ar"
+    )
+
+    @api.depends('amount', 'currency_id')
+    def _compute_amount_in_words_ar(self):
+        for rec in self:
+            if rec.amount and rec.currency_id:
+                rec.amount_in_words_ar = rec.currency_id.amount_to_text(
+                    rec.amount
+                )
+            else:
+                rec.amount_in_words_ar = ""
+
+__________________________________________________________________________________________________________________________________________________________
+
+
+<xpath expr="//span[@t-elif=&quot;o.move_type == 'in_invoice'&quot;][contains(text(),'فاتورة')]" position="replace">
+            <span t-elif="o.move_type == 'in_invoice'">فاتورةالمشتريات</span>
+        </xpath>
+__________________________________________________________________________________________________________________________________________________________
+
+<template id="payment_reminder_template" name="Second Payment Reminder">
+<t t-call="web.html_container">
+<t t-call="web.external_layout">
+<div class="page">
+<t t-foreach="docs" t-as="o">
+<div class="row" style="margin-top: 20px;">
+
+<div class="col-6" style="border-right: 1px solid #ddd; padding-right: 20px;"></div> <!-- English Section (Left) -->
+<div class="col-6" style="padding-left: 20px; direction: rtl; text-align: right;"></div> <!-- Arabic Section (Right) -->
+
+</div></t></div></t></t></template>
+__________________________________________________________________________________________________________________________________________________________
+
+block if not has_group امنع الا لمن يملك الجروب 
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="product_category_list_no_create" model="ir.ui.view">
+            <field name="name">product.category.list.no.create</field>
+            <field name="model">product.category</field>
+            <field name="inherit_id" ref="product.product_category_list_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//tree" position="attributes">
+                    <attribute name="create">false</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="product_category_list_create_for_limit_access_group" model="ir.ui.view">
+            <field name="name">product.category.list.create.limit.access.group</field>
+            <field name="model">product.category</field>
+            <field name="inherit_id" ref="product.product_category_list_view"/>
+            <field name="groups_id" eval="[(4, ref('cds_product_category_create_restrict.group_product_category_create'))]"/>
+            <field name="arch" type="xml">
+                <xpath expr="//tree" position="attributes">
+                    <attribute name="create">true</attribute>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>
+__________________________
+@api.model_create_multi
+    def create(self, vals_list):
+        if not self.env.user.has_group('cds_product_category_create_restrict.group_product_category_create'):
+            raise AccessError(_("You are not allowed to create Product Categories."))
+        return super().create(vals_list)
+        ---------------
+
+ def _check_category_access_rights(self):
+        if not self.env.user.has_group('cds_product_category_create_restrict.group_product_category_create'):
+            raise AccessError(_("You are not allowed to create/edit/delete Product Categories."))
+
+    def write(self, vals):
+        self._check_category_access_rights()
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_category_access_rights()
+        return super().unlink()
+        
+   @api.model_create_multi
+   def create(self, vals_list):
+	self._check_category_access_rights()
+        return super().create(vals_list)
+__________________________________________________________________________________________________________________________________________________________
+Password 
+=========> password="True"
+<field name="password" password="True" invisible="server_type not in ('imap', 'pop')" readonly="state != 'draft'" required="server_type in ('imap', 'pop')"/>
+__________________________________________________________________________________________________________________________________________________________
+		***TO INSTALL***
+		
+sudo -i -u postgres
+psql
+\c db_name
+
+#To Check
+SELECT id, name, state FROM ir_module_module WHERE state='to install';
+--------------------------------------------------------------------------------------------------------------------------------
+#Update All
+UPDATE ir_module_module SET state='uninstalled' WHERE state='to install';
+#Update By Name
+UPDATE ir_module_module SET state='uninstalled' WHERE state='to install' AND name='pos_paymob';
+
+_____________________________________________________________________________________________________________________________________
+To Return (Open filtered view)
+
+        action = self.env['ir.actions.act_window']._for_xml_id('stock.stock_move_line_action')
+        action['domain'] = [('move_id', 'in', scrap_records.mapped('move_ids').ids)]
+        return action
+_____________________________________________________________________________________________________________________________________
